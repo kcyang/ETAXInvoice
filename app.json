@@ -1,0 +1,27 @@
+{
+  "id": "74c99cf3-e9c0-4695-bd14-a04ecc492010",
+  "name": "ETAXInvoice",
+  "publisher": "2H Consulting",
+  "version": "0.9.0.0",
+  "brief": "한국 전자세금계산서 발행패키지",
+  "description": "한국은 국세청에 의무적으로 계산서 발행을 진행해야 합니다.",
+  "privacyStatement": "",
+  "EULA": "",
+  "help": "",
+  "url": "",
+  "logo": "2hclogo.png",
+  "dependencies": [],
+  "screenshots": [],
+  "platform": "17.0.0.0",
+  "application": "17.0.0.0",
+  "idRanges": [
+    {
+      "from": 50100,
+      "to": 50149
+    }
+  ],
+  "contextSensitiveHelpUrl": "https://www.notion.so/kcyang/ETAXInvoice-8f6f6e54de7f46ac92bb3452291438da",
+  "showMyCode": true,
+  "runtime": "6.0",
+  "target": "OnPrem"
+}
