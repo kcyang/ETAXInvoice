@@ -9,11 +9,16 @@ enum 50101 "Customer Type"
     
     value(0; Corporate)
     {
-        CaptionML = ENU='Corporate',KOR='법인';
+        CaptionML = ENU='Corporate Business',KOR='법인사업자';
     }
-    value(1; Personal)
+    value(1; Individual)
+    {
+        CaptionML = ENU='Individual Business',KOR='개인사업자';
+    }
+    value(2; Personal)
     {
         CaptionML = ENU='Personal',KOR='개인';
     }
+
     
 }
