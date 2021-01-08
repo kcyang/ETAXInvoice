@@ -50,6 +50,8 @@ table 50100 "VAT Basic Information"
             CaptionML = ENU='CEO Name',KOR='대표자 성명';
             DataClassification = CustomerContent;
         }
+        //TODO 아래 담당자는 TAXInvoiceContact 에 디폴트값으로 넣을것(Line 1)
+        //     - 값이 변경되면, 항상 같이 변경되도록 할 것.
         field(9; "Contact Name"; Text[100])
         {
             CaptionML = ENU='Contact Name',KOR='담당자 성명';
@@ -75,6 +77,8 @@ table 50100 "VAT Basic Information"
             CaptionML = ENU='Email',KOR='담당자 이메일';
             DataClassification = CustomerContent;
         }
+        //TODO 아래 담당자는 TAXInvoiceContact 에 디폴트값으로 넣을것(Line 2)
+        //     - 값이 변경되면, 항상 같이 변경되도록 할 것.        
         field(14; "Contact Name2"; Text[100])
         {
             CaptionML = ENU='Contact Name2',KOR='부담당자 성명';

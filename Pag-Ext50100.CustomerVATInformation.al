@@ -1,3 +1,6 @@
+/*
+
+*/
 pageextension 50100 "Customer VAT Information" extends "Customer Card"
 {
     layout{
@@ -80,12 +83,15 @@ pageextension 50100 "Customer VAT Information" extends "Customer Card"
                         end;                        
                     end;                    
                 }
+                //TODO VAT Basic Information 에 추가된 내용들 필드로 모두 추가할 것.
+                
+                //TODO 필드의 Priority 조절을 해서, Promoted 까지 처음에 안보이도록 할 것.
             }
 
         }
     }
     actions{
-
+        //TODO 추가연락처 등록할 수 있는 버튼추가.
     }
     trigger OnAfterGetRecord()
     var
