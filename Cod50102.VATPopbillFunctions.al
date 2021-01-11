@@ -3,6 +3,9 @@ POPBILL 연동을 위한 기능을 구현합니다.
 2021.01.07
 - 비밀키(SecretKey) : D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=
 - 링크아이디(LinkID) : 2HC
+
+FIXME SDK 에서 Datamember 형식의 클래스들에 get,set 추가
+TODO SDK 에서 제공하는 전자세금계산서 관련 procedure 를 모두 추가할 것.
 */
 dotnet
 {
