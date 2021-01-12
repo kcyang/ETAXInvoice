@@ -4,7 +4,7 @@
   "publisher": "2H Consulting",
   "version": "0.9.0.0",
   "brief": "한국 전자세금계산서 발행패키지",
-  "description": "한국은 국세청에 의무적으로 계산서 발행을 진행해야 합니다.",
+  "description": "한국은 국세청에 의무적으로 계산서 발행을 진행해야 합니다. 이 패키지는 이 시스템에서 전자세금계산서 발행을 바로 진행할 수 있도록 합니다.",
   "privacyStatement": "",
   "EULA": "",
   "help": "",
