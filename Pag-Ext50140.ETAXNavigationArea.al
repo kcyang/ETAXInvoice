@@ -23,6 +23,13 @@ pageextension 50140 ETAXNavigationArea extends "Order Processor Role Center"
                     ApplicationArea = All;
                     ToolTip = '등록된 부가세 목록을 볼 수 있습니다.';
                 }
+                action("VAT Category")
+                {
+                    CaptionML = ENU='VAT Categories',KOR='부가세 과세유형';
+                    RunObject = page "VAT Category";
+                    ApplicationArea = All;
+                    ToolTip = '부가세 과세유형을 관리합니다.';
+                }
 
                 // Creates a sub-menu
                 group("Regist VAT Documents")

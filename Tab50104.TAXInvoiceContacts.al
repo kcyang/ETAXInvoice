@@ -16,6 +16,7 @@ table 50104 "TAXInvoice Contacts"
             CaptionML = ENU='No.',KOR='거래처 번호';
             DataClassification = CustomerContent;
         }
+        //TODO 아래 일련번호를 어떻게 넣을지 고민해봐야 함. 새로 넣을 때, 자동으로 일련번호를 입력해야 됨.
         field(3; "Line No."; Integer)
         {
             CaptionML = ENU='Line No.',KOR='일련번호';

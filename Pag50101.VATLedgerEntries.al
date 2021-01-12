@@ -1,13 +1,12 @@
 /*
 부가세 기장 테이블. 계산서 발행을 위한 부가정보와 금액 및 모든 정보는 이 페이지를 통해 조회할 수 있음.
-TODO 꼭 필요한 정보외에는 숨겨서 사용자가 추가/삭제할 수 있도록 해야 함.
-TODO 필드 중요도에 따라 앞뒤 순서 정리.
 */
 page 50101 "VAT Ledger Entries"
 {
     
     ApplicationArea = All;
     CaptionML = ENU='VAT Ledger Entries',KOR='매출 부가세 조회';
+    CardPageID = "VAT Sales Document";
     PageType = List;
     SourceTable = "VAT Ledger Entries";
     UsageCategory = Lists;

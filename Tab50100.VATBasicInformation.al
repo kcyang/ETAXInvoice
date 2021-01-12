@@ -1,6 +1,7 @@
 /*
 50100 VAT Basic Information
 마스터테이블 (Customer,Vendor..등) 에 연결된 한국 부가세 정보테이블
+
 */
 table 50100 "VAT Basic Information"
 {

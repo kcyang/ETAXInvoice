@@ -4,7 +4,7 @@
 page 50104 "VAT Sales Listpart"
 {
     
-    Caption = 'VAT Sales Listpart';
+    CaptionML = ENU='Item Lines',KOR='항목';
     PageType = ListPart;
     SourceTable = "detailed VAT Ledger Entries";
     
@@ -14,10 +14,6 @@ page 50104 "VAT Sales Listpart"
         {
             repeater(General)
             {
-                field("VAT Document No."; Rec."VAT Document No.")
-                {
-                    ApplicationArea = All;
-                }
                 field("VAT Document Date"; Rec."VAT Document Date")
                 {
                     ApplicationArea = All;

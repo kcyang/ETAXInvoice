@@ -1,3 +1,14 @@
+/*
+부가세 기장.
+TODO 수량,단가 입력시, 공급가/세액/합계 계산.
+TODO 공급가 입력시 세율에 따른 세액/합계 계산.
+TODO 매출부가세의 경우, 부가세 회사에서 공급자 자동입력.
+TODO 매입부가세의 경우, 부가세 회사에서 공급받는자 자동입력.
+TODO 거래처코드 입력시, 매출,매입에 따라 공급받는자/공급자 자동입력.
+TODO 송장에서 입력시, 라인의 내용을 합쳐서, Description 외 x 건. 수량은 1, 단가는 공급가, 공급가,세액 자동입력.
+TODO 디테일 라인의 내용에 따라, 부가세 기장상의 내용 가져오기.(해당 내용은, 라인으로 대체할지 고민좀 해보자.)
+*/
+
 table 50102 "VAT Ledger Entries"
 {
     CaptionML = ENU='VAT Ledger Entries',KOR='한국 부가세 기장';
@@ -35,6 +46,21 @@ table 50102 "VAT Ledger Entries"
         {
             CaptionML = ENU='VAT Category Code',KOR='부가세 유형';
             DataClassification = CustomerContent;
+            TableRelation = "VAT Category";     
+            trigger OnValidate()
+            var
+                VATCategory: Record "VAT Category";
+            begin
+                if xRec."VAT Category Code" <> Rec."VAT Category Code" then begin
+                    VATCategory.Reset();
+                    if Rec."VAT Category Code" <> '' then begin
+                        if VATCategory.get(Rec."VAT Category Code") then begin
+                            "VAT Category Name" := VATCategory."Category Name";
+                            Modify();
+                        end
+                    end;
+                end;
+            end;       
         }
         field(7; "VAT Category Name"; Text[100])
         {
