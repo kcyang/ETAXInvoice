@@ -110,6 +110,21 @@ table 50100 "VAT Basic Information"
             CaptionML = ENU='remark1',KOR='외국인등록번호/여권번호';
             DataClassification = CustomerContent;
         }
+        field(20; "Account Name"; Text[200])
+        {
+            CaptionML = ENU='Account Name', KOR='거래처명';
+            DataClassification = CustomerContent;
+        }
+        field(21; "Account Address";Text[300])
+        {
+            CaptionML = ENU='Account Address',KOR='거래처주소';
+            DataClassification = CustomerContent;
+        }
+        field(22; "Account Reg. ID";Text[20])
+        {
+            CaptionML = ENU='Account VAT Registratio No.',KOR='사업자 번호';
+            DataClassification = CustomerContent;            
+        }
     }
     keys
     {

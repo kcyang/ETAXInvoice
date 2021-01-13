@@ -7,6 +7,7 @@ TODO 매입부가세의 경우, 부가세 회사에서 공급받는자 자동입
 TODO 거래처코드 입력시, 매출,매입에 따라 공급받는자/공급자 자동입력.
 TODO 송장에서 입력시, 라인의 내용을 합쳐서, Description 외 x 건. 수량은 1, 단가는 공급가, 공급가,세액 자동입력.
 TODO 디테일 라인의 내용에 따라, 부가세 기장상의 내용 가져오기.(해당 내용은, 라인으로 대체할지 고민좀 해보자.)
+TODO VAT 기장 점검부터.
 */
 
 table 50102 "VAT Ledger Entries"
@@ -47,6 +48,7 @@ table 50102 "VAT Ledger Entries"
             CaptionML = ENU='VAT Category Code',KOR='부가세 유형';
             DataClassification = CustomerContent;
             TableRelation = "VAT Category";     
+/*            
             trigger OnValidate()
             var
                 VATCategory: Record "VAT Category";
@@ -61,11 +63,13 @@ table 50102 "VAT Ledger Entries"
                     end;
                 end;
             end;       
+*/            
         }
         field(7; "VAT Category Name"; Text[100])
         {
             CaptionML = ENU='VAT Category Name',KOR='부가세 유형이름';
-            DataClassification = CustomerContent;
+            FieldClass = FlowField;
+            CalcFormula = lookup("VAT Category"."Category Name" where("Category No." = field("VAT Category Code")));
         }
         field(8; "VAT Omission"; Enum "VAT Omission Type")
         {
@@ -251,6 +255,19 @@ table 50102 "VAT Ledger Entries"
         {
             CaptionML = ENU='VAT Company Code',KOR='부가세회사코드';
             DataClassification = CustomerContent;
+            trigger OnValidate()
+            var
+                VATCompany: Record "VAT Company";
+            begin
+                VATCompany.Reset();
+                if VATCompany.get("VAT Company Code") then begin
+                    "Corp Contact Name" := VATCompany."Contact Name";
+                    "Corp Contact Phone" := VATCompany."Contact TEL";
+                    "Corp Contact Email" := VATCompany."Contact Email";
+                    Modify();
+                end else
+                    Error('부가세 회사가 정의되지 않았습니다. 부가세 회사를 먼저 정의하세요.');;
+            end;
         }
         field(45; "Corp Contact Name"; Text[100])
         {
@@ -457,13 +474,76 @@ table 50102 "VAT Ledger Entries"
             CaptionML = ENU='Account Contact Confirm Date',KOR='청구처 담당자 확인 일자';
             DataClassification = CustomerContent;
         }
+        field(86; "Account No."; code[20])
+        {
+            CaptionML = ENU='Account No.',KOR='거래처번호';
+            DataClassification = CustomerContent;
+            //매출,매입구분에 따라 Vendor 또는 Customer 와 연동합니다.
+            //각 매출,매입처 중에 잠김(Blocked)처리된 항목은 보여지지 않습니다.
+            TableRelation = if("VAT Issue Type" = const(Purchase)) Vendor where(Blocked = filter(' '))
+                            else if ("VAT Issue Type" = const(Sales)) Customer where(Blocked = filter(' '));         
+            //값이 변경되었을 때,
+            trigger onValidate()
+            var
+                LV_VATMaster: Record "VAT Basic Information";
+            begin
+                LV_VATMaster.Reset();                
+                //매입의 경우, Vendor 의 값을 가져오고,
+                if "VAT Issue Type" = "VAT Issue Type"::Purchase then begin
+                    LV_VATMaster.SetRange("Table ID",Database::Vendor);
+                //매출의 경우, Customer 의 값을 가져갑니다.    
+                end else if "VAT Issue Type" = "VAT Issue Type"::Sales then begin
+                    LV_VATMaster.SetRange("Table ID",Database::Customer);
+                end else
+                    Error('거래처에 등록되지 않은 번호를 입력하셨습니다.다시 확인하고 입력해 주세요.');
+
+                LV_VATMaster.SetRange("No.",Rec."Account No.");
+                if LV_VATMaster.Find('-') then begin
+                    "Account Reg. ID" := LV_VATMaster."Account Reg. ID";
+                    "Account Name" := LV_VATMaster."Account Name";
+                    "Account Address" := LV_VATMaster."Account Address";
+                    "VAT Regist Type" := LV_VATMaster."VAT Type";
+                    "Account Type" := LV_VATMaster."Customer Type";
+                    "Account Biz Class" := LV_VATMaster."Business Class";
+                    "Account Biz Type" := LV_VATMaster."Business Type";
+                    "Account SubTaxRegID" := LV_VATMaster.SubTaxRegID;
+                    "Account CEO Name" := LV_VATMaster."CEO Name";
+                    "Account Contact Name" := LV_VATMaster."Contact Name";
+                    "Account Contact Phone" := LV_VATMaster.TEL;
+                    "Account Contact Email" := LV_VATMaster.Email;
+                    "Account Contact Name2" := LV_VATMaster."Contact Name2";
+                    "Account Contact Phone2" := LV_VATMaster.TEL2;
+                    "Account Contact Email2" := LV_VATMaster.Email2;
+                    Modify();
+                end;
+            end;   
+        }        
     }
     keys
     {
+        //부가세 번호 주키
         key(PK; "VAT Document No.")
         {
             Clustered = true;
         }
+        //거래처별 부가세 번호
+        key(ListbyAccount; "Account No.","VAT Document No."){}
     }
-    
+    trigger OnInsert()
+    var
+        myNos: code[20];
+        VATCompany: Record "VAT Company";
+    begin
+        NoSeriesMgt.InitSeries('KVAT',myNos,0D,"VAT Document No.",myNos);
+        "VAT Issue Type" := "VAT Issue Type"::Sales;
+        "VAT Date" := WorkDate();
+        VATCompany.Reset();
+        if VATCompany.get() then 
+            VALIDATE("VAT Company Code",VATCompany."Corp No.")
+        else
+            Error('부가세 회사가 정의되지 않았습니다. 부가세 회사정보를 먼저 설정하세요.!');
+    end;
+
+    var
+        NoSeriesMgt: Codeunit NoSeriesManagement;
 }

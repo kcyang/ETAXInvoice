@@ -238,6 +238,9 @@ pageextension 50100 "Customer VAT Information" extends "Customer Card"
             VATBasicInformation.Init();
             VATBasicInformation."Table ID" := 18;
             VATBasicInformation."No." := Rec."No.";
+            VATBasicInformation."Account Name" := rec.Name;
+            VATBasicInformation."Account Address" := rec.Address+' '+rec."Address 2";
+            VATBasicInformation."Account Reg. ID" := Rec."VAT Registration No.";
             VATBasicInformation.Insert();
         end;
     end;

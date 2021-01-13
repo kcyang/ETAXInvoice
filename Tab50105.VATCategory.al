@@ -26,6 +26,11 @@ table 50105 "VAT Category"
             CaptionML = ENU='Taxation',KOR='과세';
             DataClassification = CustomerContent;
         }
+        field(5; "VAT Rates"; Decimal)
+        {
+            CaptionML = ENU='VAT Rates',KOR='부가세율';
+            DataClassification = CustomerContent;
+        }
     }
     keys
     {

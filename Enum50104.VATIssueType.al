@@ -7,13 +7,13 @@ enum 50104 "VAT Issue Type"
     Extensible = true;
     CaptionML = ENU='VAT Type',KOR='매출입 구분';
     
-    value(0; Purchase)
-    {
-        CaptionML = ENU='Purchase',KOR='매입';
-    }
-    value(1; Sales)
+    value(0; Sales)
     {
         CaptionML = ENU='Sales',KOR='매출';
+    }
+    value(1; Purchase)
+    {
+        CaptionML = ENU='Purchase',KOR='매입';
     }
     
 }

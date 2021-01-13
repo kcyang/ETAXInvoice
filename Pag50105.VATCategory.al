@@ -34,6 +34,12 @@ page 50105 "VAT Category"
                     CaptionML = ENU='Taxation',KOR='과세';
                     ApplicationArea = All;
                 }
+                field("VAT Rates";Rec."VAT Rates")
+                {
+                    ToolTip = '부가세율을 지정합니다. 해당 카테고리를 선택한 내용에 따라 세액을 계산합니다.';
+                    CaptionML = ENU='VAT Rates',KOR='부가세율';
+                    ApplicationArea = All;                    
+                }
             }
         }
     }
