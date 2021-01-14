@@ -25,6 +25,13 @@ page 50102 "VAT Sales Document"
                 grid(TypeGrid){
                     group(GeneralInformation){
                         CaptionML = ENU='Account Type',KOR='거래처유형';
+                        field(VATType; Rec."VAT Issue Type")
+                        {
+                            Importance = Promoted;
+                            CaptionML = ENU='Issue Type',KOR='거래 유형';
+                            ApplicationArea = ALL;
+                            ToolTip = '거래 유형입니다.';                                                                    
+                        }
                         field("Account Type";Rec."Account Type")
                         {
                             Importance = Promoted;
@@ -63,7 +70,6 @@ page 50102 "VAT Sales Document"
             group(General)
             {
                 CaptionML = ENU='General',KOR='매출 세금계산서';
-                //TODO 문서번호 자동생성 - 번호시리즈 생성필요.
                 field("VAT Document No.";Rec."VAT Document No.")
                 {
                     CaptionML = ENU='VAT Document No.',KOR='문서번호';
@@ -151,6 +157,13 @@ page 50102 "VAT Sales Document"
                     Editable = false;
                     ToolTip = '세액입니다.';                    
                 }
+                field("Total Amount";Rec."Total Amount")
+                {
+                    CaptionML = ENU='Total Amount',KOR='합  계';
+                    ApplicationArea = ALL;
+                    Editable = false;
+                    ToolTip = '합계 금액입니다.';                                        
+                }
                 field("ETAX Remark1";Rec."ETAX Remark1")
                 {
                     CaptionML = ENU='Remark1',KOR='비고1/외국인등록번호/여권번호';
@@ -171,5 +184,9 @@ page 50102 "VAT Sales Document"
             }
         }
     }
-    
+    //신규버튼을 누르면, 매출인 경우 매출타입을 넣는다.
+    trigger OnNewRecord(BelowxRec: Boolean)
+    begin
+        Rec.Validate(Rec."VAT Issue Type",Rec."VAT Issue Type"::Sales);
+    end;    
 }

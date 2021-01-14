@@ -2,14 +2,9 @@
 부가세 기장.
 TODO 수량,단가 입력시, 공급가/세액/합계 계산.
 TODO 공급가 입력시 세율에 따른 세액/합계 계산.
-TODO 매출부가세의 경우, 부가세 회사에서 공급자 자동입력.
-TODO 매입부가세의 경우, 부가세 회사에서 공급받는자 자동입력.
-TODO 거래처코드 입력시, 매출,매입에 따라 공급받는자/공급자 자동입력.
 TODO 송장에서 입력시, 라인의 내용을 합쳐서, Description 외 x 건. 수량은 1, 단가는 공급가, 공급가,세액 자동입력.
 TODO 디테일 라인의 내용에 따라, 부가세 기장상의 내용 가져오기.(해당 내용은, 라인으로 대체할지 고민좀 해보자.)
-TODO VAT 기장 점검부터.
 */
-
 table 50102 "VAT Ledger Entries"
 {
     CaptionML = ENU='VAT Ledger Entries',KOR='한국 부가세 기장';
@@ -37,6 +32,16 @@ table 50102 "VAT Ledger Entries"
         {
             CaptionML = ENU='VAT Issue Type',KOR='매출입 구분';
             DataClassification = CustomerContent;
+            //매출인경우 청구, 매입인 경우 영수를 자동으로 입력하도록 한다.
+            trigger OnValidate()
+            begin
+                if "VAT Issue Type" = "VAT Issue Type"::Sales then
+                    "VAT Claim Type" := "VAT Claim Type"::Claim
+                else if "VAT Issue Type" = "VAT Issue Type"::Purchase then
+                    "VAT Claim Type" := "VAT Claim Type"::Receipt
+                else
+                    "VAT Claim Type" := "VAT Claim Type"::None;
+            end;
         }
         field(5; "VAT Date"; Date)
         {
@@ -48,27 +53,18 @@ table 50102 "VAT Ledger Entries"
             CaptionML = ENU='VAT Category Code',KOR='부가세 유형';
             DataClassification = CustomerContent;
             TableRelation = "VAT Category";     
-/*            
+
             trigger OnValidate()
-            var
-                VATCategory: Record "VAT Category";
             begin
-                if xRec."VAT Category Code" <> Rec."VAT Category Code" then begin
-                    VATCategory.Reset();
-                    if Rec."VAT Category Code" <> '' then begin
-                        if VATCategory.get(Rec."VAT Category Code") then begin
-                            "VAT Category Name" := VATCategory."Category Name";
-                            Modify();
-                        end
-                    end;
-                end;
+                CalcFields("VAT Category Name");
             end;       
-*/            
+
         }
         field(7; "VAT Category Name"; Text[100])
         {
             CaptionML = ENU='VAT Category Name',KOR='부가세 유형이름';
             FieldClass = FlowField;
+            //Category Name 은, VAT Category 테이블에서 가져와서 그냥 보여준다.
             CalcFormula = lookup("VAT Category"."Category Name" where("Category No." = field("VAT Category Code")));
         }
         field(8; "VAT Omission"; Enum "VAT Omission Type")
@@ -255,6 +251,7 @@ table 50102 "VAT Ledger Entries"
         {
             CaptionML = ENU='VAT Company Code',KOR='부가세회사코드';
             DataClassification = CustomerContent;
+            //회사코드가 입력되면, 관련정보를 가져와 입력해 놓는다.
             trigger OnValidate()
             var
                 VATCompany: Record "VAT Company";
@@ -264,7 +261,6 @@ table 50102 "VAT Ledger Entries"
                     "Corp Contact Name" := VATCompany."Contact Name";
                     "Corp Contact Phone" := VATCompany."Contact TEL";
                     "Corp Contact Email" := VATCompany."Contact Email";
-                    Modify();
                 end else
                     Error('부가세 회사가 정의되지 않았습니다. 부가세 회사를 먼저 정의하세요.');;
             end;
@@ -534,11 +530,14 @@ table 50102 "VAT Ledger Entries"
         myNos: code[20];
         VATCompany: Record "VAT Company";
     begin
+        //번호 입력한다.
+        //FIXME 번호시리즈는 부가세 설정에서 확인하도록 수정해야 됨.
         NoSeriesMgt.InitSeries('KVAT',myNos,0D,"VAT Document No.",myNos);
-        "VAT Issue Type" := "VAT Issue Type"::Sales;
+        //부가세 일자는 작업일자를 넣는다.
         "VAT Date" := WorkDate();
+        //회사코드는 기본코드를 자동으로 입력하도록 한다.
         VATCompany.Reset();
-        if VATCompany.get() then 
+        if VATCompany.FindFirst() then 
             VALIDATE("VAT Company Code",VATCompany."Corp No.")
         else
             Error('부가세 회사가 정의되지 않았습니다. 부가세 회사정보를 먼저 설정하세요.!');

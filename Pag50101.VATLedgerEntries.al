@@ -1,8 +1,6 @@
 /*
 부가세 기장 테이블. 계산서 발행을 위한 부가정보와 금액 및 모든 정보는 이 페이지를 통해 조회할 수 있음.
-FIXME Cardpage 에 열릴때, 문서의 유형을 따로 나눌 필요가 있는지? 없다면, 하나로 합치자.
-https://community.dynamics.com/nav/w/designpatterns/150/multi-page-list
-위 내용참고해서, 만약에 카드를 나눠서 오픈해야 한다면, 위 내용으로 참고해서 진행하자.
+
 TODO 거래내역 가져오기를 해서, 계산서를 발행하는 것도 확인할 것.
 */
 page 50101 "VAT Ledger Entries"
@@ -10,7 +8,6 @@ page 50101 "VAT Ledger Entries"
     
     ApplicationArea = All;
     CaptionML = ENU='VAT Ledger Entries',KOR='매출 부가세 조회';
-    CardPageID = "VAT Sales Document"; //FIXME 임시.
     PageType = List;
     SourceTable = "VAT Ledger Entries";
     UsageCategory = Lists;
@@ -381,6 +378,33 @@ page 50101 "VAT Ledger Entries"
                 {
                     ApplicationArea = All;
                 }
+            }
+        }
+    }
+
+    actions
+    {
+        area(Navigation)
+        {
+            action(OpenDocument)
+            {
+                CaptionML = ENU='Open Document',KOR='문서열기';
+                Image = OpenJournal;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;
+
+                trigger OnAction()
+                var
+                    myInt : Integer;
+                begin
+                    if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
+                        page.Run(page::"VAT Sales Document")
+                    else if Rec."VAT Issue Type" = rec."VAT Issue Type"::Purchase then
+                        page.Run(page::"VAT Purchase Document")
+                    else
+                        ;
+                end;
             }
         }
     }
