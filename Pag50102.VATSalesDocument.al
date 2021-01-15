@@ -48,6 +48,10 @@ page 50102 "VAT Sales Document"
                             CaptionML = ENU='VAT Category',KOR='부가세 유형';
                             ApplicationArea = ALL;
                             ToolTip = '부가세 유형코드입니다.';     
+                            trigger OnValidate()
+                            begin
+                                CurrPage.Update();
+                            end;
                         }
                         field("VAT Category Name";Rec."VAT Category Name")
                         {
@@ -148,7 +152,7 @@ page 50102 "VAT Sales Document"
                     CaptionML = ENU='Actual Amount',KOR='공급가액';
                     ApplicationArea = ALL;
                     Editable = false;
-                    ToolTip = '공급가입니다.';                    
+                    ToolTip = '공급가입니다.';               
                 }
                 field("Tax Amount";Rec."Tax Amount")
                 {

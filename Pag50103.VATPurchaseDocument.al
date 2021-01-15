@@ -44,7 +44,11 @@ page 50103 "VAT Purchase Document"
                         {
                             CaptionML = ENU='VAT Category',KOR='부가세 유형';
                             ApplicationArea = ALL;
-                            ToolTip = '부가세 유형코드입니다.';     
+                            ToolTip = '부가세 유형코드입니다.';    
+                            trigger OnValidate()
+                            begin
+                                CurrPage.Update();
+                            end;                             
                         }
                         field("VAT Category Name";Rec."VAT Category Name")
                         {

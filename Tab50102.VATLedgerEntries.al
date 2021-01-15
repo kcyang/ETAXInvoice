@@ -10,6 +10,7 @@ table 50102 "VAT Ledger Entries"
     CaptionML = ENU='VAT Ledger Entries',KOR='한국 부가세 기장';
     DataClassification = CustomerContent;
     Extensible = true;
+
     
     fields
     {
@@ -56,7 +57,10 @@ table 50102 "VAT Ledger Entries"
 
             trigger OnValidate()
             begin
-                CalcFields("VAT Category Name");
+                //CalcFields("VAT Category Name");
+                //CalcFields("VAT Rates");
+                //부가세율이 바뀌므로, detailed 항목을 세액을 변경합니다.
+                OnChangeVATCategory(Rec,xRec);
             end;       
 
         }
@@ -90,7 +94,9 @@ table 50102 "VAT Ledger Entries"
         field(12; "VAT Rates"; Decimal)
         {
             CaptionML = ENU='VAT Rates',KOR='부가세율';
-            DataClassification = CustomerContent;
+            FieldClass = FlowField;
+            //VAT Rates 은, VAT Category 테이블에서 가져와서 그냥 보여준다.
+            CalcFormula = lookup("VAT Category"."VAT Rates" where("Category No." = field("VAT Category Code")));            
         }
         field(13; "Table ID"; Integer)
         {
@@ -135,17 +141,20 @@ table 50102 "VAT Ledger Entries"
         field(21; "Actual Amount"; Decimal)
         {
             CaptionML = ENU='Actual Amount',KOR='공급가액';
-            DataClassification = CustomerContent;
+            FieldClass = FlowField;
+            CalcFormula = sum("detailed VAT Ledger Entries"."Actual Amount" where ("VAT Document No."=field("VAT Document No.")));
         }
         field(22; "Tax Amount"; Decimal)
         {
             CaptionML = ENU='Tax Amount',KOR='세액';
-            DataClassification = CustomerContent;
+            FieldClass = FlowField;
+            CalcFormula = sum("detailed VAT Ledger Entries"."Tax Amount" where ("VAT Document No."=field("VAT Document No.")));
         }
         field(23; "Total Amount"; Decimal)
         {
             CaptionML = ENU='Total Amount',KOR='합계금액';
-            DataClassification = CustomerContent;
+            FieldClass = FlowField;
+            CalcFormula = sum("detailed VAT Ledger Entries"."Line Total Amount" where ("VAT Document No."=field("VAT Document No.")));
         }
         field(24; "Tax Issue Date"; Date)
         {
@@ -543,6 +552,11 @@ table 50102 "VAT Ledger Entries"
             Error('부가세 회사가 정의되지 않았습니다. 부가세 회사정보를 먼저 설정하세요.!');
     end;
 
+    //VAT Category 가 변경되면, 부가세율 변경을 위해 이벤트를 발생시킵니다.
+    [IntegrationEvent(false, false)]
+    local procedure OnChangeVATCategory(var Rec: Record "VAT Ledger Entries";var xRec:Record "VAT Ledger Entries")
+    begin
+    end;
     var
         NoSeriesMgt: Codeunit NoSeriesManagement;
 }

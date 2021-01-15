@@ -45,10 +45,18 @@ page 50104 "VAT Sales Listpart"
                 field("Actual Amount"; Rec."Actual Amount")
                 {
                     ApplicationArea = All;
+                    trigger OnValidate()
+                    begin
+                        CurrPage.Update();
+                    end;
                 }
                 field("Tax Amount"; Rec."Tax Amount")
                 {
                     ApplicationArea = All;
+                    trigger OnValidate()
+                    begin
+                        CurrPage.Update();
+                    end;                    
                 }
                 field(Remark; Rec.Remark)
                 {
@@ -57,5 +65,4 @@ page 50104 "VAT Sales Listpart"
             }
         }
     }
-    
 }

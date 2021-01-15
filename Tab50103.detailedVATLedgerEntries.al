@@ -50,16 +50,31 @@ table 50103 "detailed VAT Ledger Entries"
         {
             CaptionML = ENU='Actual Amount',KOR='공급가액';
             DataClassification = CustomerContent;
+            //공급가액을 입력하면, 문서의 부가세율에 따라, 세액을 자동으로 계산하고, 문서에 업데이트합니다.
+            trigger OnValidate()
+            begin
+                UpdateRecordAmount();
+            end;
         }
         field(10; "Tax Amount"; Decimal)
         {
             CaptionML = ENU='Tax Amount',KOR='세액';
             DataClassification = CustomerContent;
+            trigger OnValidate()
+            begin
+                "Line Total Amount" := "Actual Amount"+"Tax Amount";
+                Modify();
+            end;            
         }
         field(11; Remark; Text[100])
         {
             CaptionML = ENU='Remark',KOR='비고';
             DataClassification = CustomerContent;
+        }
+        field(12;"Line Total Amount";Decimal)
+        {
+            CaptionML = ENU='Line Total Amount',KOR='라인 합계';
+            DataClassification = CustomerContent;            
         }
     }
     keys
@@ -69,5 +84,21 @@ table 50103 "detailed VAT Ledger Entries"
             Clustered = true;
         }
     }
-    
+    //숫자 관련된 값이 바뀌면, 문서상의 금액을 변경합니다.
+    local procedure UpdateRecordAmount()
+    var
+        VATDocument: Record "VAT Ledger Entries";
+    begin
+        VATDocument.Reset();
+        if VATDocument.Get(Rec."VAT Document No.") then begin
+            VATDocument.CalcFields("VAT Rates");
+            if VATDocument."VAT Rates" <> 0 then
+                "Tax Amount" := "Actual Amount"*(VATDocument."VAT Rates"/100)
+            else
+                "Tax Amount" := 0;
+        end else 
+            "Tax Amount" := 0;
+        "Line Total Amount" := "Actual Amount"+"Tax Amount";
+        Modify();
+    end;   
 }

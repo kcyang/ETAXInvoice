@@ -8,7 +8,7 @@ page 50101 "VAT Ledger Entries"
     
     ApplicationArea = All;
     CaptionML = ENU='VAT Ledger Entries',KOR='매출 부가세 조회';
-    PageType = List;
+    PageType = ListPlus;
     SourceTable = "VAT Ledger Entries";
     UsageCategory = Lists;
     Editable = true;
@@ -70,14 +70,17 @@ page 50101 "VAT Ledger Entries"
                 }                
                 field("Actual Amount"; Rec."Actual Amount")
                 {
+                    Editable = false;
                     ApplicationArea = All;
                 }         
                 field("Tax Amount"; Rec."Tax Amount")
                 {
+                    Editable = false;
                     ApplicationArea = All;
                 }                   
                 field("Total Amount"; Rec."Total Amount")
                 {
+                    Editable = false;
                     ApplicationArea = All;
                 }   
                 field("Tax Issue Date"; Rec."Tax Issue Date")
@@ -379,6 +382,17 @@ page 50101 "VAT Ledger Entries"
                     ApplicationArea = All;
                 }
             }
+            /*
+            품목,규격,수량,단가,공급가액,세액,비고
+            */
+            part(VATSalesLines;"VAT Sales Listpart")
+            {
+                CaptionML = ENU='Sales Lines',KOR='항목';
+                ApplicationArea = All;
+                Editable = true;
+                SubPageLink = "VAT Document No." = FIELD("VAT Document No.");
+                UpdatePropagation = Both;                
+            }            
         }
     }
 
@@ -399,9 +413,9 @@ page 50101 "VAT Ledger Entries"
                     myInt : Integer;
                 begin
                     if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
-                        page.Run(page::"VAT Sales Document")
+                        page.Run(page::"VAT Sales Document",Rec)
                     else if Rec."VAT Issue Type" = rec."VAT Issue Type"::Purchase then
-                        page.Run(page::"VAT Purchase Document")
+                        page.Run(page::"VAT Purchase Document",Rec)
                     else
                         ;
                 end;
