@@ -8,7 +8,7 @@ page 50101 "VAT Ledger Entries"
     
     ApplicationArea = All;
     CaptionML = ENU='VAT Ledger Entries',KOR='매출 부가세 조회';
-    PageType = ListPlus;
+    PageType = List;
     SourceTable = "VAT Ledger Entries";
     UsageCategory = Lists;
     Editable = true;
@@ -385,6 +385,7 @@ page 50101 "VAT Ledger Entries"
             /*
             품목,규격,수량,단가,공급가액,세액,비고
             */
+/*현재는 필요없어 보임.            
             part(VATSalesLines;"VAT Sales Listpart")
             {
                 CaptionML = ENU='Sales Lines',KOR='항목';
@@ -393,6 +394,7 @@ page 50101 "VAT Ledger Entries"
                 SubPageLink = "VAT Document No." = FIELD("VAT Document No.");
                 UpdatePropagation = Both;                
             }            
+*/            
         }
     }
 
