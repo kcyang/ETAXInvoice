@@ -1,8 +1,6 @@
 /*
 주문서에서, Posting 한 후 부가세 컨트롤.
 
-TODO Purchase Order, Purchase Invoice
-TODO Purchase Credit Memo, Purchase Retrun Order
 TODO Service Order, Service Invoice
 TODO Service Credit Memo, Service Return Order
 */
@@ -272,7 +270,7 @@ codeunit 50100 "VAT Functions"
           PurchLineDescription += StrSubstNo('외 %1건',PurchLineCnt);
           VATLedgerEntreis.Init();
           VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
-          VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Sales); //매출/청구
+          VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Purchase); //매출/청구
           VATLedgerEntreis.Validate("Account No.",PurchCrMemo."Pay-to Vendor No."); //청구처 입력.
           VATLedgerEntreis."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
           if PurchDocumentType = PurchDocumentType::"Credit Memo" then
