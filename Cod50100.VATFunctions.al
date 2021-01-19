@@ -46,6 +46,43 @@ codeunit 50100 "VAT Functions"
         end; //VATInformation.Find()      
     end; //End Procedure.
 
+    //Purchase Order, Purchase Invoice
+    //Purchase Post 가 마무리 된 후, invoice 문서에 대해서..    
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnAfterPostPurchaseDoc', '', false, false)]
+    local procedure OnAfterPostPurchaseDoc(var PurchaseHeader: Record "Purchase Header"; var GenJnlPostLine: Codeunit "Gen. Jnl.-Post Line"; PurchRcpHdrNo: Code[20]; RetShptHdrNo: Code[20]; PurchInvHdrNo: Code[20]; PurchCrMemoHdrNo: Code[20]; CommitIsSupressed: Boolean)
+    var
+      VATInformation: Record "VAT Basic Information";   
+      PurchInvoice: Record "Purch. Inv. Header"; 
+      PurchCrMemo: Record "Purch. Cr. Memo Hdr.";
+    begin
+        VATInformation.Reset();
+        VATInformation.SetRange("Table ID",Database::Vendor);
+        //계산서 발행은, 청구처를 기준으로.
+        VATInformation.SetRange("No.",PurchaseHeader."Pay-to Vendor No.");
+
+        //하나만 찾으면 됨.
+        if VATInformation.Find('-') then begin
+          if VATInformation."VAT Type" = VATInformation."VAT Type"::Line then begin
+            if Dialog.Confirm('%1 고객에 대해 계산서 발행을 위한 부가정보를 등록하시겠습니까?',true,PurchaseHeader."Pay-to Name") then begin
+              case PurchaseHeader."Document Type" of
+                PurchaseHeader."Document Type"::Order,PurchaseHeader."Document Type"::Invoice:
+                  begin
+                    PurchInvoice.Reset();
+                    if PurchInvoice.get(PurchInvHdrNo) then
+                      CreatePurchVATLedgerEntreis(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
+                  end;
+                PurchaseHeader."Document Type"::"Credit Memo",PurchaseHeader."Document Type"::"Return Order":
+                  begin
+                    PurchCrMemo.Reset();
+                    if PurchCrMemo.get(PurchCrMemoHdrNo) then
+                      CreatePurchVATLedgerEntreis(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
+                  end;
+                else;
+              end; //CASE End;
+            end; //Dialog Confirm
+          end; //VAT Type::Line
+        end; //VATInformation.Find()      
+    end; //End Procedure.
     
     
     /// <summary>
@@ -154,6 +191,115 @@ codeunit 50100 "VAT Functions"
       END;
 
       Page.Run(Page::"VAT Sales Document",VATLedgerEntreis);
+
+    end;
+
+    /// <summary>
+    /// 매입 주문,송장에 대한 부가세Entry 를 입력하는 procedure.
+    /// </summary>
+    /// <param name="PurchDocumentType">매입 문서유형에 따라, 가져올 대상을 정합니다.</param>
+    /// <param name="PurchHeader">Pruchase Order, Pruchase Invoice 인 경우, 이 레코드 값을 취합니다.</param>
+    /// <param name="PurchCrMemo">Pruchase Credit Memo, Pruchase Return Order 인 경우, 이 레코드 값을 취합니다.</param>
+    /// <param name="VATInformation">부가세 관련정보가 있는 마스터항목입니다.</param>
+    local procedure CreatePurchVATLedgerEntreis(PurchDocumentType: Enum "Purchase Document Type";PurchHeader: Record "Purch. Inv. Header";PurchCrMemo: Record "Purch. Cr. Memo Hdr.";VATInformation: Record "VAT Basic Information")
+    var
+      VATLedgerEntreis : Record "VAT Ledger Entries";
+      detailedVATLedgerEntreis : Record "detailed VAT Ledger Entries";
+      PurchLines: Record "Purch. Inv. Line";
+      PurchCrLines: Record "Purch. Cr. Memo Line";
+      PurchLineCnt: Integer;
+      PurchLineDescription: Text[300];
+    begin
+      Clear(PurchLineCnt);
+      Clear(PurchLineDescription);
+
+      CASE PurchDocumentType of
+        PurchDocumentType::Order,PurchDocumentType::Invoice:
+        begin
+          ///... 외 ..건 Description 을 위해 Sales Line 뒤지기.
+          PurchLines.Reset();
+          PurchLines.SetRange("Document No.",PurchHeader."No.");
+          PurchLines.SetFilter(Type,'%1..%2',PurchLines.Type::"G/L Account",PurchLines.Type::"Fixed Asset");
+
+          if PurchLines.FindSet() then begin
+          repeat
+            PurchLineCnt += 1;
+            if PurchLineCnt = 1 then
+              PurchLineDescription := PurchLines.Description;
+          until PurchLines.Next() = 0; 
+          end;
+          PurchLineDescription += StrSubstNo('외 %1건',PurchLineCnt);          
+          VATLedgerEntreis.Init();
+          VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
+          VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Purchase); //매출/청구
+          VATLedgerEntreis.Validate("Account No.",PurchHeader."Pay-to Vendor No."); //매입처 입력.
+          VATLedgerEntreis."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
+          if PurchDocumentType = PurchDocumentType::Order then
+            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::Order
+          else
+            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::Invoice;
+          VATLedgerEntreis."Linked Document No." := PurchHeader."No.";
+          VATLedgerEntreis."Linked External Document No." := PurchHeader."Vendor Invoice No.";
+          VATLedgerEntreis.Modify();
+
+          PurchHeader.CalcFields(Amount,"Amount Including VAT");
+          detailedVATLedgerEntreis.Init();
+          detailedVATLedgerEntreis."VAT Document Date" := PurchHeader."Posting Date";
+          detailedVATLedgerEntreis."VAT Document No." := VATLedgerEntreis."VAT Document No.";
+          detailedVATLedgerEntreis."Line No." := 10000;
+          detailedVATLedgerEntreis."Actual Amount" := PurchHeader.Amount;
+          //Actual 은 부가세 카테코리의 금액을 업데이트하므로, Validate 는 Tax 에 넣어서 진행한다.
+          detailedVATLedgerEntreis."Tax Amount" := PurchHeader."Amount Including VAT" - PurchHeader.Amount;
+          detailedVATLedgerEntreis."Line Total Amount" := detailedVATLedgerEntreis."Actual Amount"+detailedVATLedgerEntreis."Tax Amount";
+          detailedVATLedgerEntreis.Quantity := 1;
+          detailedVATLedgerEntreis."Item Description" := PurchLineDescription;
+          detailedVATLedgerEntreis.Insert(true);          
+        end;
+        PurchDocumentType::"Credit Memo",PurchDocumentType::"Return Order":
+        begin
+          ///... 외 ..건 Description 을 위해 Sales Line 뒤지기.
+          PurchCrLines.Reset();
+          PurchCrLines.SetRange("Document No.",PurchCrMemo."No.");
+          PurchCrLines.SetFilter(Type,'%1..%2',PurchCrLines.Type::"G/L Account",PurchCrLines.Type::"Fixed Asset");
+
+          if PurchCrLines.FindSet() then begin
+          repeat
+            PurchLineCnt += 1;
+            if PurchLineCnt = 1 then
+              PurchLineDescription := PurchCrLines.Description;
+          until PurchCrLines.Next() = 0; 
+          end;
+          PurchLineDescription += StrSubstNo('외 %1건',PurchLineCnt);
+          VATLedgerEntreis.Init();
+          VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
+          VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Sales); //매출/청구
+          VATLedgerEntreis.Validate("Account No.",PurchCrMemo."Pay-to Vendor No."); //청구처 입력.
+          VATLedgerEntreis."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
+          if PurchDocumentType = PurchDocumentType::"Credit Memo" then
+            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::"Credit Memo"
+          else
+            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::"Return Order";
+          VATLedgerEntreis."Linked Document No." := PurchCrMemo."No.";
+          VATLedgerEntreis."Linked External Document No." := PurchCrMemo."Vendor Cr. Memo No.";
+          VATLedgerEntreis.Modify();
+
+          PurchCrMemo.CalcFields(Amount,"Amount Including VAT");
+          detailedVATLedgerEntreis.Init();
+          detailedVATLedgerEntreis."VAT Document Date" := PurchCrMemo."Posting Date";
+          detailedVATLedgerEntreis."VAT Document No." := VATLedgerEntreis."VAT Document No.";
+          detailedVATLedgerEntreis."Line No." := 10000;
+          detailedVATLedgerEntreis."Actual Amount" := -PurchCrMemo.Amount;
+          //Actual 은 부가세 카테코리의 금액을 업데이트하므로, Validate 는 Tax 에 넣어서 진행한다.
+          detailedVATLedgerEntreis."Tax Amount" := -(PurchCrMemo."Amount Including VAT" - PurchCrMemo.Amount);
+          detailedVATLedgerEntreis."Line Total Amount" := -(PurchCrMemo."Amount Including VAT");
+          detailedVATLedgerEntreis.Quantity := 1;
+          detailedVATLedgerEntreis."Item Description" := PurchLineDescription;
+          detailedVATLedgerEntreis.Insert(true);               
+        end; 
+        else;
+      END;
+
+      Page.Run(Page::"VAT Purchase Document",VATLedgerEntreis);
 
     end;
 }
