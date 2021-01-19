@@ -6,6 +6,43 @@ TODO Service Credit Memo, Service Return Order
 */
 codeunit 50100 "VAT Functions"
 {
+
+    //General Journal 에서 라인을 삭제하는 경우, 관련 내용이 있는경우, 삭제한다.
+    [EventSubscriber(ObjectType::Table, Database::"Gen. Journal Line", 'OnAfterDeleteEvent', '', false, false)]
+    local procedure OnAfterDeleteJournalLine(var Rec: Record "Gen. Journal Line")
+    var
+      VATLedgerEntries: Record "VAT Ledger Entries";
+    begin
+      VATLedgerEntries.Reset();
+      VATLedgerEntries.SetFilter("Linked Jnl. Template Name",'%1',Rec."Journal Template Name");
+      VATLedgerEntries.SetFilter("Linked Jnl. Batch Name",'%1',Rec."Journal Batch Name");
+      VATLedgerEntries.SetFilter("Linked Jnl. Line No.",'%1',Rec."Line No.");
+      VATLedgerEntries.SetFilter("Linked Document No.",'%1',Rec."Document No.");
+      if VATLedgerEntries.FindSet() then begin
+      repeat
+        VATLedgerEntries.Delete(true);
+      until VATLedgerEntries.Next() = 0;
+      end;
+    end;
+
+    [EventSubscriber(ObjectType::Table, Database::"Gen. Journal Line", 'OnAfterValidateEvent', 'Document No.', false, false)]
+    local procedure OnAfterValidateGeneralJournalLineEvent(var Rec: Record "Gen. Journal Line";var xRec: Record "Gen. Journal Line")
+    var
+      VATLedgerEntries: Record "VAT Ledger Entries";
+    begin
+      VATLedgerEntries.Reset();
+      VATLedgerEntries.SetFilter("Linked Jnl. Template Name",'%1',Rec."Journal Template Name");
+      VATLedgerEntries.SetFilter("Linked Jnl. Batch Name",'%1',Rec."Journal Batch Name");
+      VATLedgerEntries.SetFilter("Linked Jnl. Line No.",'%1',Rec."Line No.");
+      //변경되기 전 문서번호를 찾아야 함.
+      VATLedgerEntries.SetFilter("Linked Document No.",'%1',xRec."Document No.");
+      if VATLedgerEntries.Find('-') then begin
+        VATLedgerEntries."Linked Document No." := Rec."Document No.";
+        VATLedgerEntries."VAT Date" := Rec."Posting Date";
+        VATLedgerEntries.Modify();
+      end;      
+    end;
+
     //Sales Order, Sales Invoice
     //SalesPost 가 마무리 된 후, invoice 문서에 대해서..
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnAfterPostSalesDoc', '',false,false)]

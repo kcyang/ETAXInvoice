@@ -548,6 +548,16 @@ table 50102 "VAT Ledger Entries"
         else
             Error('부가세 회사가 정의되지 않았습니다. 부가세 회사정보를 먼저 설정하세요.!');
     end;
+    
+    //삭제되면, 하위 문서는 같이 삭제할 것.
+    trigger OnDelete()
+    var
+        detailedVATLedger: Record "detailed VAT Ledger Entries";
+    begin
+        detailedVATLedger.Reset();
+        detailedVATLedger.SetRange("VAT Document No.",Rec."VAT Document No.");
+        detailedVATLedger.DeleteAll(true);
+    end;
 
     //VAT Category 가 변경되면, 부가세율 변경을 위해 이벤트를 발생시킵니다.
     [IntegrationEvent(false, false)]
