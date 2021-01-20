@@ -14,7 +14,8 @@ pageextension 50149 POPBILLTEST extends "Customer List"
 
                 trigger OnAction()
                 begin
-                    POPBILL.GetCorpInfo();
+                    //POPBILL.GetCorpInfo();
+                    POPBILL.RegistIssue();
                 end;
             }
         }
