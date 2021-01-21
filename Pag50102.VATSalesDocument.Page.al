@@ -74,6 +74,12 @@ page 50102 "VAT Sales Document"
             group(General)
             {
                 CaptionML = ENU='General',KOR='매출 세금계산서';
+                field("VAT Date";Rec."VAT Date")
+                {
+                    CaptionML = ENU='VAT Date',KOR='계산서 발행일자';
+                    ApplicationArea = ALL;
+                    ToolTip = '계산서 발행일자 입니다.';                    
+                }
                 field("VAT Document No.";Rec."VAT Document No.")
                 {
                     CaptionML = ENU='VAT Document No.',KOR='문서번호';

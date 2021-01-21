@@ -4,7 +4,10 @@ POPBILL 연동을 위한 기능을 구현합니다.
 - 비밀키(SecretKey) : D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=
 - 링크아이디(LinkID) : 2HC
 
-FIXME SDK 에서 Datamember 형식의 클래스들에 get,set 추가
+TODO !!!0122 단건전송에 대해서, 응답코드/오류코드 처리.
+TODO !!!역발행 처리.
+TODO !!!수정세금계산서 발행처리.
+TODO 계산서 발행화면 별도로 페이지 개발. (상태/목록/깔끔하게 필요한 내용만 볼 수 있도록.<< 이카운트 참고.)
 TODO SDK 에서 제공하는 전자세금계산서 관련 procedure 를 모두 추가할 것.
 */
 dotnet
@@ -103,11 +106,13 @@ codeunit 50102 VATPopbillFunctions
                 exit;
 
         VATCompanyInformation.Reset();
-        if not VATCompanyInformation.find('-') then
+        if VATCompanyInformation.Get(VATLedger."VAT Company Code") then
+        begin
+            CorpRegID := DelChr(VATCompanyInformation."Corp RegID", '=', '-');
+            AccountRegID := DelChr(VATLedger."Account Reg. ID", '=', '-');
+        end else
             Error('부가세 회사정보가 정의되지 않았습니다.\부가세회사를 먼저 정의하세요.');
 
-        CorpRegID := DelChr(VATCompanyInformation."Corp RegID", '=', '-');
-        AccountRegID := DelChr(VATLedger."Account Reg. ID", '=', '-');
         //TODO 사업자등록번호 유효체크하는 기능추가 필요.
         if (CorpRegID = '') then
             Error('부가세 회사정보에 공급자 사업자번호가 정의되지 않았습니다.\공급자 사업자번호를 정의하세요.');
@@ -451,7 +456,15 @@ codeunit 50102 VATPopbillFunctions
 
         //5. 결과값 받기.
         //6. 넘어온 키/레코드에 관련 값 업데이트.        
+        VATLedger."ETAX Document Status" := VATLedger."ETAX Document Status"::Issued;
+        VATLedger."ETAX Issue ID" := response.ntsConfirmNum;
+        VATLedger."ETAX Status Code" := Format(response.code);
+        VATLedger."ETAX Issuer" := UserId;
+        VATLedger."ETAX Issue Date" := Today;
+        VATLedger.Modify();
 
-        Message('응답코드:%1 \ 응답메시지 %2 \ 국세청승인번호 %3', response.code, response.message, response.ntsConfirmNum);
+        Message('전자세금 계산서가 발행요청되었습니다.!\상세 상태는 등록된 부가세문서에서 확인하세요.');
+        
+        //Message('응답코드:%1 \ 응답메시지 %2 \ 국세청승인번호 %3', response.code, response.message, response.ntsConfirmNum);
     end;
 }

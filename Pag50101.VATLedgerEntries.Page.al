@@ -411,8 +411,6 @@ page 50101 "VAT Ledger Entries"
                 ApplicationArea = ALL;
 
                 trigger OnAction()
-                var
-                    myInt : Integer;
                 begin
                     if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
                         page.Run(page::"VAT Sales Document",Rec)
@@ -421,6 +419,28 @@ page 50101 "VAT Ledger Entries"
                     else
                         ;
                 end;
+            }
+        }
+        area(Processing)
+        {
+            action(RegistIssue)
+            {
+                CaptionML = ENU='Regist Issue',KOR='전자세금계산서 발행';
+                Image = ElectronicRegister;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;              
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    //1. 계산서 발행 대상인지 체크.
+                    if Rec."ETAX Document Status" = Rec."ETAX Document Status"::Issued then
+                        Error('이미 전자 계산서 발행이 완료된 건입니다.\문서를 확인하세요.');
+
+                    //2. 계산서 발행.
+                    popbill.RegistIssue(Rec);
+                end;  
             }
         }
     }
