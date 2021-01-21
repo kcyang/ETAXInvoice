@@ -19,6 +19,10 @@ enum 50101 "Customer Type"
     {
         CaptionML = ENU='Personal',KOR='개인';
     }
+    value(3; Foreigner)
+    {
+        CaptionML = ENU='Foreigner',KOR='외국인';
+    }
 
     
 }

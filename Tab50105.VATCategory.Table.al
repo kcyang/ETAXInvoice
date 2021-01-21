@@ -31,6 +31,11 @@ table 50105 "VAT Category"
             CaptionML = ENU='VAT Rates',KOR='부가세율';
             DataClassification = CustomerContent;
         }
+        field(6; ZeroTax; Boolean)
+        {
+            CaptionML = ENU='Zero Tax',KOR='영세율여부';
+            DataClassification = CustomerContent;
+        }
     }
     keys
     {

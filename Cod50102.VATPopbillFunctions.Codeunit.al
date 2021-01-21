@@ -22,7 +22,7 @@ dotnet
     assembly(mscorlib)
     {
         type(System.String; dstr) { }
-        type("System.Collections.Generic.List`1"; dlist) {}
+        type("System.Collections.Generic.List`1"; dlist) { }
     }
 }
 codeunit 50102 VATPopbillFunctions
@@ -51,19 +51,16 @@ codeunit 50102 VATPopbillFunctions
         popbill.IsTest := true;
         popbill.IPRestrictOnOff := true;
 
-        //corpreg := '3578700926';
-        //corpid := 'gncons';
         corpinfo := popbill.GetCorpInfo('7558800637', '');
-        //corpinfo := popbill.GetCorpInfo('3578700926','gncons');
-        
-        Message('대표자:%1 \\ 상호:%2 \\ 주소:%3', corpinfo.ceoname,corpinfo.corpName,corpinfo.addr);
-        
-        
+
+        Message('대표자:%1 \\ 상호:%2 \\ 주소:%3', corpinfo.ceoname, corpinfo.corpName, corpinfo.addr);
+
+
 
     end;
 
     //세금계산서를 즉시발행.
-    procedure RegistIssue()
+    procedure RegistIssue(var VATLedger: Record "VAT Ledger Entries")
     var
         popbill: DotNet TaxinvoiceService;
         taxinvoice: DotNet Taxinvoice;
@@ -72,6 +69,14 @@ codeunit 50102 VATPopbillFunctions
         skey: DotNet dstr;
         linkid: DotNet dstr;
         listOfTaxdetailList: DotNet dlist;
+        VATCompanyInformation: Record "VAT Company";
+        VATCategory: Record "VAT Category";
+        detailedVATLedger: Record "detailed VAT Ledger Entries";
+        CorpRegID: Text;
+        AccountRegID: Text;
+        kwon: Integer;
+        ho: Integer;
+        SerialNum: Integer;
     begin
         //0. dotnet initialize
         Clear(skey);
@@ -81,184 +86,358 @@ codeunit 50102 VATPopbillFunctions
         Clear(taxinvoice);
         Clear(taxinvoicedetail);
         Clear(listOfTaxdetailList);
+        Clear(CorpRegID);
+        Clear(AccountRegID);
+        Clear(kwon);
+        Clear(ho);
+        Clear(SerialNum);
+        //2H Consulting - Security Key & Linkid (변경할 일 없음.)
         skey := 'D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=';
         linkid := '2HC';
+
+
+        //1. 넘어온 키/레코드에 대한 값 체크.
+        //2. 키/레코드에 대한 필요한 값 체크.        
+        if VATLedger."VAT Date" > Today then
+            if not Dialog.Confirm('신고일자가 오늘 보다 미래입니다. 그래도 진행하시겠습니까?', true) then
+                exit;
+
+        VATCompanyInformation.Reset();
+        if not VATCompanyInformation.find('-') then
+            Error('부가세 회사정보가 정의되지 않았습니다.\부가세회사를 먼저 정의하세요.');
+
+        CorpRegID := DelChr(VATCompanyInformation."Corp RegID", '=', '-');
+        AccountRegID := DelChr(VATLedger."Account Reg. ID", '=', '-');
+        //TODO 사업자등록번호 유효체크하는 기능추가 필요.
+        if (CorpRegID = '') then
+            Error('부가세 회사정보에 공급자 사업자번호가 정의되지 않았습니다.\공급자 사업자번호를 정의하세요.');
+
+        if (STRLEN(CorpRegID) <> 10) then
+            Error('부가세 회사정보에 공급자 사업자번호가 유효하지 않습니다.\공급자 사업자번호를 확인하세요.');
+
+        if (VATCompanyInformation."Corp Name" = '') then
+            Error('부가세 회사정보에 공급자 대표자 성명이 정의되지 않았습니다.\공급자 대표자 성명을 입력하세요.');
+
+        //FIXME 거래처의 사업자 번호가 없는 경우, Master 에서 다시 복사하고 유효성 검사를 할 것.!!!
+        if (AccountRegID = '') OR (StrLen(AccountRegID) <> 10) then
+            Error('공급받는자 또는 공급자의 사업자등록번호가 정의되지 않거나, 유효하지 않습니다.\거래처의 사업자번호를 확인하세요.');
+
+        if (VATLedger."Account Name" = '') then
+            Error('공급받는자 또는 공급자의 상호가 정의되지 않았습니다.\거래처의 상호를 확인하세요.');
+
+        if (VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt) AND (VATLedger."VAT Document No." = '') then
+            Error('부가세 번호가 누락되었습니다.\부가세 번호를 확인하세요.');
+
+        if (VATLedger."Account CEO Name" = '') then
+            Error('공급받는자 대표자 성명이 정의되지 않았습니다.\거래처의 대표자 성명을 입력하세요.');
+
+        if (VATLedger."Account Contact Email" = '') then
+            Error('공급받는자의 이메일 주소가 입력되지 않았습니다.\거래처 담당자에게 이메일이 발송되지 않습니다.\거래처의 담당자 이메일 주소를 확인하세요.');
+
+        if (VATLedger."Actual Amount" = 0) then
+            Error('공급가액이 0원입니다. \전자세금계산서 발행을 진행할 수 없습니다.');
+
+        VATCategory.Reset();
+        if VATCategory.get(VATLedger."VAT Category Code") then begin
+            if VATCategory.Use = false then
+                Error('사용하지 않는 부가세카테고리로 지정되었습니다.\문서의 부가세카테고리를 확인하세요.');
+
+            if VATCategory.Taxation = true then
+                if VATLedger."Tax Amount" = 0 then
+                    Error('과세 유형의 계산서이나 세액이 0원입니다.\세액을 확인하세요.');
+        end;
+
+        if (VATLedger."VAT Document Type" = VATLedger."VAT Document Type"::Correction) AND (VATLedger."ETAX Mod Code" = VATLedger."ETAX Mod Code"::" ") then
+            Error('수정세금계산서의 경우, 수정사유가 정의되어야 합니다. \수정발급사유를 확인하시고 다시 진행해 주세요.');
+
+        //FIXME 담당자에게 이메일 보내는 여부체크 기능추가. (담당자 별로)
+
+        //3. 필요한 값 셋업.
+
+        // 세금계산서 서비스 객체 초기화
         popbill := popbill.TaxinvoiceService(linkid, skey);
 
+        // 연동환경 설정값, 개발용(true), 상업용(false)
         popbill.IsTest := true;
-        popbill.IPRestrictOnOff := true;        
 
-        //popbill testing. START...
+        // 발급된 토큰에 대한 IP 제한기능 사용여부, 권장(true)
+        popbill.IPRestrictOnOff := true;
+
+        // 로컬PC 시간 사용 여부 true(사용), false(기본값) - 미사용
+        popbill.UseLocalTimeYN := false;
+
+        //taxinvoice - 전달객체(json format을 위해 serialization을 위한 객체에 값 전달.)
         taxinvoice := taxinvoice.Taxinvoice();
+
+        //---------------------------------------------------------------------------
+
         // [필수] 기재상 작성일자, 날짜형식(yyyyMMdd)
-        taxinvoice.writeDate := '20210120';
+        taxinvoice.writeDate := Format(VATLedger."VAT Date", 0, '<Year4><Month,2><Day,2>');
         // [필수] 과금방향, {정과금, 역과금}중 선택
         // - 정과금(공급자과금), 역과금(공급받는자과금)
         // - 역과금은 역발행 세금계산서를 발행하는 경우만 가능        
         taxinvoice.chargeDirection := '정과금';
+
         // [필수] 발행형태, {정발행, 역발행, 위수탁} 중 기재 
-        taxinvoice.issueType := '정발행';
         // [필수] {영수, 청구} 중 기재
-        taxinvoice.purposeType := '청구';
+        // 위수탁발행은 대상에 넣지 않음.
+        // 영수인 경우, 역발행.
+        if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt then begin
+            taxinvoice.issueType := '역발행';
+            taxinvoice.purposeType := '영수';
+        end else begin
+            taxinvoice.issueType := '정발행'; //청구는 정발행.
+            taxinvoice.purposeType := '청구';
+        end;
+
         // [필수] 과세형태, {과세, 영세, 면세} 중 기재
-        taxinvoice.taxType := '과세';
+        if VATCategory.Get(VATLedger."VAT Category Code") then begin
+            if VATCategory.ZeroTax = true then
+                taxinvoice.taxType := '영세'
+            else
+                if VATCategory.Taxation = true then
+                    taxinvoice.taxType := '과세'
+                else
+                    taxinvoice.taxType := '면세';
+        end;
 
-        /*****************************************************************
-        *                         공급자 정보                             *
-        *****************************************************************/
+        //청구일때, 공급자(VAT Company Information) 공급받는자(Account/Customer)
+        if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Claim then begin
+            /*****************************************************************
+            *                         공급자 정보                             *
+            * 청구유형, 매출청구 / VAT Company Information             *
+            *****************************************************************/
+            // [필수] 공급자 사업자번호, '-' 제외 10자리
+            taxinvoice.invoicerCorpNum := CorpRegID; //공급자사업자번호.
+            // 공급자 종사업자 식별번호. 필요시 기재. 형식은 숫자 4자리.
+            taxinvoice.invoicerTaxRegID := '';
+            // [필수] 공급자 상호
+            taxinvoice.invoicerCorpName := VATCompanyInformation."Corp Name";
+            // [필수] 공급자 문서번호, 숫자, 영문, '-', '_' 조합으로 1~24자리까지 사업자번호별 중복없는 고유번호 할당
+            taxinvoice.invoicerMgtKey := VATLedger."VAT Document No.";
+            // [필수] 공급자 대표자 성명
+            taxinvoice.invoicerCEOName := VATCompanyInformation."CEO Name";
+            // 공급자 주소 
+            taxinvoice.invoicerAddr := VATCompanyInformation."Corp Addr";
+            // 공급자 종목
+            taxinvoice.invoicerBizClass := VATCompanyInformation."Corp BizClass";
+            // 공급자 업태
+            taxinvoice.invoicerBizType := VATCompanyInformation."Corp BizType";
+            // 공급자 담당자 성명 
+            taxinvoice.invoicerContactName := VATCompanyInformation."Contact Name";
+            // 공급자 담당자 메일주소
+            taxinvoice.invoicerEmail := VATCompanyInformation."Contact Email";
+            // 공급자 담당자 연락처
+            taxinvoice.invoicerTEL := VATCompanyInformation."Contact TEL";
+            // 공급자 담당자 휴대폰번호
+            taxinvoice.invoicerHP := VATCompanyInformation."Contact HP";
+            // 발행시 알림문자 전송여부
+            // - 공급받는자 담당자 휴대폰번호(invoiceeHP1)로 전송
+            //FIXME 부가세회사 정보에 담당자에게 연락여부를 추가할 것.
+            taxinvoice.invoicerSMSSendYN := false;
 
-        // [필수] 공급자 사업자번호, '-' 제외 10자리
-        taxinvoice.invoicerCorpNum := '7558800637'; //공급자사업자번호.
+            /*********************************************************************
+            *                         공급받는자 정보                              *
+            * Account / Customer /                                               *
+            *********************************************************************/
+            // [필수] 공급받는자 구분, {사업자, 개인, 외국인} 중 기재 
+            CASE VATLedger."Account Type" of
+                VATLedger."Account Type"::Corporate:
+                    taxinvoice.invoiceeType := '사업자';
+                VATLedger."Account Type"::Individual, VATLedger."Account Type"::Personal:
+                    taxinvoice.invoiceeType := '개인';
+                VATLedger."Account Type"::Foreigner:
+                    taxinvoice.invoiceeType := '외국인';
+                else
+            END;
+            // [필수] 공급받는자 사업자번호, '-'제외 10자리
+            taxinvoice.invoiceeCorpNum := AccountRegID;
+            // [필수] 공급받는자 상호
+            taxinvoice.invoiceeCorpName := VATLedger."Account Name";
+            // [역발행시 필수] 공급받는자 문서번호, 숫자, 영문, '-', '_' 조합으로 1~24자리까지 사업자번호별 중복없는 고유번호 할당
+            taxinvoice.invoiceeMgtKey := '';
+            // [필수] 공급받는자 대표자 성명 
+            taxinvoice.invoiceeCEOName := VATLedger."Account CEO Name";
+            // 공급받는자 주소 
+            taxinvoice.invoiceeAddr := VATLedger."Account Address";
+            // 공급받는자 종목
+            taxinvoice.invoiceeBizClass := VATLedger."Account Biz Class";
+            // 공급받는자 업태 
+            taxinvoice.invoiceeBizType := VATLedger."Account Biz Type";
+            // 공급받는자 담당자 연락처
+            taxinvoice.invoiceeTEL1 := VATLedger."Account Contact Phone";
+            // 공급받는자 담당자명 
+            taxinvoice.invoiceeContactName1 := VATLedger."Account Contact Name";
+            // 공급받는자 담당자 메일주소 
+            // 팝빌 개발환경에서 테스트하는 경우에도 안내 메일이 전송되므로,
+            // 실제 거래처의 메일주소가 기재되지 않도록 주의
+            taxinvoice.invoiceeEmail1 := VATLedger."Account Contact Email";
 
-        // 공급자 종사업자 식별번호. 필요시 기재. 형식은 숫자 4자리.
-        taxinvoice.invoicerTaxRegID := '';
+            //**********************************************/
+            //테스트할 때에는 Fix.
+            taxinvoice.invoiceeEmail1 := 'kc.yang@2hc.co.kr';
+            //**********************************************/
 
-        // [필수] 공급자 상호
-        taxinvoice.invoicerCorpName := '(주)투에이치컨설팅';
+            // 공급받는자 담당자 휴대폰번호 
+            taxinvoice.invoiceeHP1 := VATLedger."Account Contact Phone";
 
-        // [필수] 공급자 문서번호, 숫자, 영문, '-', '_' 조합으로 1~24자리까지 사업자번호별 중복없는 고유번호 할당
-        taxinvoice.invoicerMgtKey := 'VAT0000001';
+            //**********************************************/
+            //테스트할 때에는 Fix.
+            taxinvoice.invoiceeHP1 := '010-8732-4043';
+            //**********************************************/
 
-        // [필수] 공급자 대표자 성명
-        taxinvoice.invoicerCEOName := '한주영';
+            // 역발행시 알림문자 전송여부 
+            taxinvoice.invoiceeSMSSendYN := false;
+        end
+        //영수일때, 공급자(Account/Vendor) 공급받는자(VAT Company Information)
+        else
+            if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt then begin
+                /*****************************************************************
+                *                         공급자 정보                             *
+                * Account / Vendor /                                               *
+                *****************************************************************/
 
-        // 공급자 주소 
-        taxinvoice.invoicerAddr := '';
-        // 공급자 종목
-        taxinvoice.invoicerBizClass := '';
-        // 공급자 업태
-        taxinvoice.invoicerBizType := '';
-        // 공급자 담당자 성명 
-        taxinvoice.invoicerContactName := '';
-        // 공급자 담당자 메일주소
-        taxinvoice.invoicerEmail := '';
-        // 공급자 담당자 연락처
-        taxinvoice.invoicerTEL := '';
-        // 공급자 담당자 휴대폰번호
-        taxinvoice.invoicerHP := '';
-        // 발행시 알림문자 전송여부
-        // - 공급받는자 담당자 휴대폰번호(invoiceeHP1)로 전송
-        taxinvoice.invoicerSMSSendYN := false;
+                // [필수] 공급자 사업자번호, '-' 제외 10자리
+                taxinvoice.invoicerCorpNum := AccountRegID; //공급자사업자번호.
+                                                            // 공급자 종사업자 식별번호. 필요시 기재. 형식은 숫자 4자리.
+                taxinvoice.invoicerTaxRegID := '';
+                // [필수] 공급자 상호
+                taxinvoice.invoicerCorpName := VATLedger."Account Name";
+                // [필수] 공급자 문서번호, 숫자, 영문, '-', '_' 조합으로 1~24자리까지 사업자번호별 중복없는 고유번호 할당
+                taxinvoice.invoicerMgtKey := VATLedger."Linked External Document No.";
+                // [필수] 공급자 대표자 성명
+                taxinvoice.invoicerCEOName := VATLedger."Account CEO Name";
+                // 공급자 주소 
+                taxinvoice.invoicerAddr := VATLedger."Account Address";
+                // 공급자 종목
+                taxinvoice.invoicerBizClass := VATLedger."Account Biz Class";
+                // 공급자 업태
+                taxinvoice.invoicerBizType := VATLedger."Account Biz Type";
+                // 공급자 담당자 성명 
+                taxinvoice.invoicerContactName := VATLedger."Account Contact Name";
+                // 공급자 담당자 메일주소
+                taxinvoice.invoicerEmail := VATLedger."Account Contact Email";
+                // 공급자 담당자 연락처
+                taxinvoice.invoicerTEL := VATLedger."Account Contact Phone";
+                // 공급자 담당자 휴대폰번호
+                taxinvoice.invoicerHP := VATLedger."Account Contact Phone";
+                // 발행시 알림문자 전송여부
+                // - 공급받는자 담당자 휴대폰번호(invoiceeHP1)로 전송
+                taxinvoice.invoicerSMSSendYN := false;
 
-        /*********************************************************************
-        *                         공급받는자 정보                              *
-        *********************************************************************/
-        // [필수] 공급받는자 구분, {사업자, 개인, 외국인} 중 기재 
-        taxinvoice.invoiceeType := '사업자';
 
-        // [필수] 공급받는자 사업자번호, '-'제외 10자리
-        taxinvoice.invoiceeCorpNum := '3578700926';
+                /*********************************************************************
+                *                         공급받는자 정보                              *
+                * VAT Company Information.
+                *********************************************************************/
+                // [필수] 공급받는자 구분, {사업자, 개인, 외국인} 중 기재 
+                taxinvoice.invoiceeType := '사업자';
+                // [필수] 공급받는자 사업자번호, '-'제외 10자리
+                taxinvoice.invoiceeCorpNum := CorpRegID;
+                // [필수] 공급받는자 상호
+                taxinvoice.invoiceeCorpName := VATCompanyInformation."Corp Name";
+                // [역발행시 필수] 공급받는자 문서번호, 숫자, 영문, '-', '_' 조합으로 1~24자리까지 사업자번호별 중복없는 고유번호 할당
+                taxinvoice.invoiceeMgtKey := VATLedger."VAT Document No.";
+                // [필수] 공급받는자 대표자 성명 
+                taxinvoice.invoiceeCEOName := VATCompanyInformation."CEO Name";
+                // 공급받는자 주소 
+                taxinvoice.invoiceeAddr := VATCompanyInformation."Corp Addr";
+                // 공급받는자 종목
+                taxinvoice.invoiceeBizClass := VATCompanyInformation."Corp BizClass";
+                // 공급받는자 업태 
+                taxinvoice.invoiceeBizType := VATCompanyInformation."Corp BizType";
+                // 공급받는자 담당자 연락처
+                taxinvoice.invoiceeTEL1 := VATCompanyInformation."Contact TEL";
+                // 공급받는자 담당자명 
+                taxinvoice.invoiceeContactName1 := VATCompanyInformation."Contact Name";
+                // 공급받는자 담당자 메일주소 
+                // 팝빌 개발환경에서 테스트하는 경우에도 안내 메일이 전송되므로,
+                // 실제 거래처의 메일주소가 기재되지 않도록 주의
+                taxinvoice.invoiceeEmail1 := VATCompanyInformation."Contact Email";
+                // 공급받는자 담당자 휴대폰번호 
+                taxinvoice.invoiceeHP1 := VATCompanyInformation."Contact HP";
+                // 역발행시 알림문자 전송여부 
+                taxinvoice.invoiceeSMSSendYN := false;
+            end;
 
-        // [필수] 공급받는자 상호
-        taxinvoice.invoiceeCorpName := '주식회사 지앤컨설팅';
-
-        // [역발행시 필수] 공급받는자 문서번호, 숫자, 영문, '-', '_' 조합으로 1~24자리까지 사업자번호별 중복없는 고유번호 할당
-        taxinvoice.invoiceeMgtKey := '';
-
-        // [필수] 공급받는자 대표자 성명 
-        taxinvoice.invoiceeCEOName := '양광철';
-
-        // 공급받는자 주소 
-        taxinvoice.invoiceeAddr := '';
-
-        // 공급받는자 종목
-        taxinvoice.invoiceeBizClass := '';
-
-        // 공급받는자 업태 
-        taxinvoice.invoiceeBizType := '';
-
-        // 공급받는자 담당자 연락처
-        taxinvoice.invoiceeTEL1 := '';
-
-        // 공급받는자 담당자명 
-        taxinvoice.invoiceeContactName1 := '';
-
-        // 공급받는자 담당자 메일주소 
-        // 팝빌 개발환경에서 테스트하는 경우에도 안내 메일이 전송되므로,
-        // 실제 거래처의 메일주소가 기재되지 않도록 주의
-        taxinvoice.invoiceeEmail1 := 'kc.yang@2hc.co.kr';
-
-        // 공급받는자 담당자 휴대폰번호 
-        taxinvoice.invoiceeHP1 := '010-8732-4043';
-
-        // 역발행시 알림문자 전송여부 
-        taxinvoice.invoiceeSMSSendYN := false;
 
         /*********************************************************************
         *                          세금계산서 정보                          *
         *********************************************************************/
 
         // [필수] 공급가액 합계
-        taxinvoice.supplyCostTotal := '100000';
-
+        taxinvoice.supplyCostTotal := Format(VATLedger."Actual Amount");
         // [필수] 세액 합계
-        taxinvoice.taxTotal := '10000';
+        taxinvoice.taxTotal := Format(VATLedger."Tax Amount");
 
         // [필수] 합계금액,  공급가액 합계 + 세액 합계
-        taxinvoice.totalAmount := '110000';
-
+        taxinvoice.totalAmount := Format(VATLedger."Total Amount");
         // 기재상 일련번호 항목 
-        taxinvoice.serialNum := '123';
-
+        taxinvoice.serialNum := '1';
         // 기재상 현금 항목 
         taxinvoice.cash := '';
-
         // 기재상 수표 항목
         taxinvoice.chkBill := '';
-
         // 기재상 어음 항목
         taxinvoice.note := '';
-
         // 기재상 외상미수금 항목
         taxinvoice.credit := '';
-
         // 기재상 비고 항목
-        taxinvoice.remark1 := '비고1';
-        taxinvoice.remark2 := '비고2';
-        taxinvoice.remark3 := '비고3';
+        taxinvoice.remark1 := VATLedger."ETAX Remark1";
+        taxinvoice.remark2 := VATLedger."ETAX Remark2";
+        taxinvoice.remark3 := VATLedger."ETAX Remark3";
+
+        Evaluate(kwon, Format(Today, 0, '<Year,4>'));
+        Evaluate(ho, Format(Today, 0, '<Month,2>'));
 
         // 기재상 권 항목, 최대값 32767
         // 미기재시 taxinvoice.kwon := null;
-        taxinvoice.kwon := 1;
-
+        // 권은 년도로 입력되도록 함. 2HC
+        taxinvoice.kwon := kwon;
         // 기재상 호 항목, 최대값 32767
         // 미기재시 taxinvoice.ho := null;
-        taxinvoice.ho := 1;
-
-
+        // 호는 월로 입력되도록 함. 2HC
+        taxinvoice.ho := ho;
         // 사업자등록증 이미지 첨부여부
         taxinvoice.businessLicenseYN := false;
-
         // 통장사본 이미지 첨부여부 
         taxinvoice.bankBookYN := false;
 
         /**************************************************************************
-            *        수정세금계산서 정보 (수정세금계산서 작성시에만 기재             *
-            * - 수정세금계산서 관련 정보는 연동매뉴얼 또는 개발가이드 링크 참조      *
-            * - [참고] 수정세금계산서 작성방법 안내 - http://blog.linkhub.co.kr/650  *
-            *************************************************************************/
+        *        수정세금계산서 정보 (수정세금계산서 작성시에만 기재             *
+        * - 수정세금계산서 관련 정보는 연동매뉴얼 또는 개발가이드 링크 참조      *
+        * - [참고] 수정세금계산서 작성방법 안내 - http://blog.linkhub.co.kr/650  *
+        *************************************************************************/
 
         // 수정사유코드, 1~6까지 선택기재.
+        //TODO 수정세금계산서 부분 개발.필요.
         //taxinvoice.modifyCode := 0;
-
         // 수정세금계산서 작성시 원본세금계산서의 국세청승인번호
-        taxinvoice.orgNTSConfirmNum := '';
+        //taxinvoice.orgNTSConfirmNum := '';
+        //*************************************************************************/
 
-        taxinvoicedetail := taxinvoicedetail.TaxinvoiceDetail();
-        taxinvoicedetail.serialNum := 1;
-        taxinvoicedetail.purchaseDT := '20210120';
-        taxinvoicedetail.itemName := '';
-        taxinvoicedetail.spec := '';
-        taxinvoicedetail.qty := '';
-        taxinvoicedetail.unitCost := '';
-        taxinvoicedetail.supplyCost := '';
-        taxinvoicedetail.tax := '';
-        taxinvoicedetail.remark := '';
+        detailedVATLedger.Reset();
+        detailedVATLedger.SetRange("VAT Document No.", VATLedger."VAT Document No.");
+        SerialNum := 0;
+        if detailedVATLedger.FindSet() then begin
+            repeat
+                SerialNum += 1;
+                taxinvoicedetail := taxinvoicedetail.TaxinvoiceDetail();
+                taxinvoicedetail.serialNum := SerialNum;
+                taxinvoicedetail.purchaseDT := Format(VATLedger."VAT Date", 0, '<Year4><Month,2><Day,2>');
+                taxinvoicedetail.itemName := detailedVATLedger."Item Description";
+                taxinvoicedetail.spec := detailedVATLedger.Spec;
+                taxinvoicedetail.qty := Format(detailedVATLedger.Quantity);
+                taxinvoicedetail.unitCost := Format(detailedVATLedger."Unit price");
+                taxinvoicedetail.supplyCost := Format(detailedVATLedger."Actual Amount");
+                taxinvoicedetail.tax := Format(detailedVATLedger."Tax Amount");
+                taxinvoicedetail.remark := detailedVATLedger.Remark;
+            until detailedVATLedger.Next() = 0;
+        end;
 
-        //taxinvoice.AddTaxDetail(taxinvoicedetail);
-
+        //4. popbill 연동.
         //response := popbill.RegistIssue('',taxinvoice,false,'',false,'','');
-        response := popbill.RegistOneIssue('7558800637',taxinvoice,
+        response := popbill.RegistOneIssue(CorpRegID, taxinvoice,
             taxinvoicedetail.serialNum,
             taxinvoicedetail.purchaseDT,
             taxinvoicedetail.itemName,
@@ -268,46 +447,11 @@ codeunit 50102 VATPopbillFunctions
             taxinvoicedetail.supplyCost,
             taxinvoicedetail.tax,
             taxinvoicedetail.remark,
-            false,'',false,'','');
+            false, '', false, '', '');
 
-        Message('응답코드:%1 \ 응답메시지 %2 \ 국세청승인번호 %3',response.code,response.message,response.ntsConfirmNum);
-
-        //popbill testing. END...
-
-
-        //1. 넘어온 키/레코드에 대한 값 체크.
-        //2. 키/레코드에 대한 필요한 값 체크.
-        //3. 필요한 값 셋업.
-        //4. popbill 연동.
         //5. 결과값 받기.
-        //6. 넘어온 키/레코드에 관련 값 업데이트.
+        //6. 넘어온 키/레코드에 관련 값 업데이트.        
+
+        Message('응답코드:%1 \ 응답메시지 %2 \ 국세청승인번호 %3', response.code, response.message, response.ntsConfirmNum);
     end;
 }
-/*
-        private string LinkID = "TESTER";
-
-        // 비밀키
-        private string SecretKey = "SwWxqU+0TErBXy/9TVjIPEnI0VTUMMSQZtJf3Ed8q3I=";
-
-        // 세금계산서 서비스 객체 선언
-        private TaxinvoiceService taxinvoiceService;
-
-        private const string CRLF = "\r\n";
-
-        public frmExample()
-        {
-            InitializeComponent();
-
-            // 세금계산서 서비스 객체 초기화
-            taxinvoiceService = new TaxinvoiceService(LinkID, SecretKey);
-
-            // 연동환경 설정값, 개발용(true), 상업용(false)
-            taxinvoiceService.IsTest = true;
-
-            // 발급된 토큰에 대한 IP 제한기능 사용여부, 권장(true)
-            taxinvoiceService.IPRestrictOnOff = true;
-
-            // 로컬PC 시간 사용 여부 true(사용), false(기본값) - 미사용
-            taxinvoiceService.UseLocalTimeYN = false;
-        }
-*/

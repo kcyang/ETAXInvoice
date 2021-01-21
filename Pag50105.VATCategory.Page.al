@@ -40,6 +40,12 @@ page 50105 "VAT Category"
                     CaptionML = ENU='VAT Rates',KOR='부가세율';
                     ApplicationArea = All;                    
                 }
+                field("ZeroTax";Rec.ZeroTax)
+                {
+                    ToolTip = '영세율 여부를 지정합니다.';
+                    CaptionML = ENU='Zero Tax',KOR='영세율여부';
+                    ApplicationArea = All;   
+                }
             }
         }
     }
