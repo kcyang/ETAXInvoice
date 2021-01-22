@@ -19,6 +19,7 @@ page 50103 "VAT Purchase Document"
             group(RegistType)
             {
                 CaptionML = ENU='Type',KOR='계산서 유형';
+                Enabled = groupEditable;
                 grid(TypeGrid){
                     group(GeneralInformation){
                         CaptionML = ENU='Account Type',KOR='거래처유형';
@@ -70,7 +71,14 @@ page 50103 "VAT Purchase Document"
             */
             group(General)
             {
-                CaptionML = ENU='General',KOR='매출 세금계산서';
+                CaptionML = ENU='General',KOR='매입 세금계산서';
+                Enabled = groupEditable;
+                field("VAT Date";Rec."VAT Date")
+                {
+                    CaptionML = ENU='VAT Date',KOR='계산서 발행일자';
+                    ApplicationArea = ALL;
+                    ToolTip = '계산서 발행일자 입니다.';                    
+                }
                 field("VAT Document No.";Rec."VAT Document No.")
                 {
                     CaptionML = ENU='VAT Document No.',KOR='문서번호';
@@ -144,6 +152,7 @@ page 50103 "VAT Purchase Document"
             group("Ivoice Details")
             {
                 CaptionML = ENU='Details',KOR='공급가액/세액';
+                Enabled = groupEditable;
                 field("Actual Amount";Rec."Actual Amount")
                 {
                     CaptionML = ENU='Actual Amount',KOR='공급가액';
@@ -182,12 +191,74 @@ page 50103 "VAT Purchase Document"
                 Editable = true;
                 SubPageLink = "VAT Document No." = FIELD("VAT Document No.");
                 UpdatePropagation = Both;                
+                Enabled = groupEditable;
             }
-        }
+        }        
     }
+    actions
+    {
+        area(Processing)
+        {
+            action(RegistIssue)
+            {
+                CaptionML = ENU='Regist Issue',KOR='전자세금계산서 발행';
+                Image = ElectronicRegister;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;  
+                Enabled = groupEditable;            
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    //1. 계산서 발행 대상인지 체크.
+                    if Rec."ETAX Document Status" = Rec."ETAX Document Status"::Issued then
+                        Error('이미 전자 계산서 발행이 완료된 건입니다.\문서를 확인하세요.');
+
+                    //2. 계산서 발행.
+                    popbill.RegistIssue(Rec);
+                end;                  
+            }
+            action(OpenPopbill)
+            {
+                CaptionML = ENU='Open ETAX Document',KOR='세금계산서 보기';
+                Image = LaunchWeb;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;
+
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    if Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued then
+                        Error('전자세금계산서가 발행(요청)되지 않았습니다.\계산서를 열 수 없습니다.');
+                    popbill.GetPopUpURL(Rec."VAT Document No.",Rec."VAT Issue Type");
+                end;                
+            }            
+        }
+    }    
     //신규버튼을 누르면, 매입인 경우 매입 타입을 넣는다.
     trigger OnNewRecord(BelowxRec: Boolean)
     begin
         REC.VALIDATE(Rec."VAT Issue Type",Rec."VAT Issue Type"::Purchase);
     end;
-}
+
+    trigger OnAfterGetCurrRecord()
+    begin
+        if Rec."ETAX Document Status" = Rec."ETAX Document Status"::Issued then
+            groupEditable := false
+        else
+            groupEditable := true;
+
+    end;
+
+    trigger OnInit()
+    begin
+        groupEditable := true;        
+    end;
+
+    var
+        groupEditable: Boolean;
+}    
+

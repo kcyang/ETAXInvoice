@@ -420,6 +420,23 @@ page 50101 "VAT Ledger Entries"
                         ;
                 end;
             }
+            action(OpenPopbill)
+            {
+                CaptionML = ENU='Open ETAX Document',KOR='세금계산서 보기';
+                Image = LaunchWeb;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;
+
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    if Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued then
+                        Error('전자세금계산서가 발행(요청)되지 않았습니다.\계산서를 열 수 없습니다.');
+                    popbill.GetPopUpURL(Rec."VAT Document No.",Rec."VAT Issue Type");
+                end;                
+            }            
         }
         area(Processing)
         {

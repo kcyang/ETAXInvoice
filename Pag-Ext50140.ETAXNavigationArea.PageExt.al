@@ -15,13 +15,21 @@ pageextension 50140 ETAXNavigationArea extends "Order Processor Role Center"
                     ApplicationArea = All;
                     ToolTip = '계산서 발행 및 부가세 관련 정보를 위한 회사정보를 등록합니다.';
                 }
-                 action("VAT Ledger Entries")
+                action("VAT Ledger Entries")
                 {
                     Image = Sales;
                     CaptionML = ENU='VAT Ledger Entries',KOR='등록된 부가세 기장';
                     RunObject = page "VAT Ledger Entries";
                     ApplicationArea = All;
                     ToolTip = '등록된 부가세 목록을 볼 수 있습니다.';
+                }
+                action("Regist ETAX Invoice")
+                {
+                    Image = Sales;
+                    CaptionML = ENU='Regist Issue',KOR='전자세금계산서 발행';
+                    RunObject = page "ETAX Regist Issue";
+                    ApplicationArea = All;
+                    ToolTip = '계산서 발행대상 목록을 보고 전자(세금)계산서를 발행합니다.';
                 }
                 action("VAT Category")
                 {
