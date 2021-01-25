@@ -81,6 +81,10 @@ page 50106 "ETAX Regist Issue"
                 {
                     ApplicationArea = All;
                 }
+                field("ETAX Mod Issue ID";Rec."ETAX Mod Issue ID")
+                {
+                    ApplicationArea = All;                    
+                }
             }
         }
     }

@@ -10,7 +10,7 @@ page 50103 "VAT Purchase Document"
     SourceTable = "VAT Ledger Entries";
     RefreshOnActivate = true;
     Editable = true;
-    SourceTableView = where("VAT Issue Type"=filter(Purchase));
+    SourceTableView = where("VAT Issue Type"=filter(Purchase),"VAT Document Type" = filter(General));
     
     layout
     {
