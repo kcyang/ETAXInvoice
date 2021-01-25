@@ -14,6 +14,7 @@ page 50107 "Amended tax invoices"
             group(AmendedType)
             {
                 CaptionML = ENU = 'Amended Type', KOR = '수정사유선택';
+                Enabled = groupEditable;
                 field(AmendedTaxType; Rec."ETAX Mod Code")
                 {
                     Importance = Promoted;
@@ -315,13 +316,14 @@ page 50107 "Amended tax invoices"
                 Promoted = true;
                 PromotedIsBig = true;
                 ApplicationArea = ALL;
+                Enabled = groupEditable;
                 trigger OnAction()
                 var
                     popbill: Codeunit VATPopbillFunctions;
                 begin
                     //1. 계산서 발행 대상인지 체크.
-                    if Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued then
-                        Error('전자 계산서 발행이 되지 않은 건입니다.\수정세금계산서발행은 이미 발행한 문서에 대해 진행하실 수 있습니다.');
+                    if Rec."VAT Document Type" <> Rec."VAT Document Type"::Correction then
+                        Error('수정 전자 세금계산서가 아닙니다.\문서를 확인하세요.');
 
                     //2. 계산서 발행.
                     popbill.RegistIssue(Rec, true);

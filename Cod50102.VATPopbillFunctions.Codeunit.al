@@ -509,6 +509,7 @@ codeunit 50102 VATPopbillFunctions
         end else if Amended = true then 
         begin
         //수정세금계산서 발행의 경우.
+            VATLedger."ETAX Document Status" := VATLedger."ETAX Document Status"::Issued;
             VATLedger."ETAX Mod Issue ID" := response.ntsConfirmNum;
             VATLedger."ETAX Status Code" := Format(response.code);
             VATLedger."ETAX Mod Issuer" := UserId;

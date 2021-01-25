@@ -1,4 +1,3 @@
-//FIXME 수정세금계산서에 대해서, 또 수정세금계산서 발행을 하는 경우 막을 것.
 page 50106 "ETAX Regist Issue"
 {
     
@@ -20,6 +19,10 @@ page 50106 "ETAX Regist Issue"
                 {
                     ApplicationArea = All;
                 }
+                field("VAT Document Type"; Rec."VAT Document Type")
+                {
+                    ApplicationArea = All;
+                }                
                 field("Account No."; Rec."Account No.")
                 {
                     ApplicationArea = All;
@@ -37,10 +40,6 @@ page 50106 "ETAX Regist Issue"
                     ApplicationArea = All;
                 }
                 field("Total Amount"; Rec."Total Amount")
-                {
-                    ApplicationArea = All;
-                }
-                field("VAT Document Type"; Rec."VAT Document Type")
                 {
                     ApplicationArea = All;
                 }
@@ -100,7 +99,8 @@ page 50106 "ETAX Regist Issue"
                 trigger OnAction()
                 begin
                     //이전문서가 있으면, 수정세금 계산서문서이므로, 수정계산서 문서로 표시함.
-                    if Rec."ETAX Before Document No." <> '' then
+                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction)
+                      AND (Rec."ETAX Before Document No." <> '') then
                     begin
                         page.Run(page::"Amended tax invoices",Rec);
                     end else
@@ -135,7 +135,7 @@ page 50106 "ETAX Regist Issue"
             action(OpenAmendedDocument)
             {
                 //해당 문서에 수정문서가 존재하면, 그 문서를 여는 것.
-                CaptionML = ENU='Open Amended Document',KOR='해당 수정계산서 문서열기';
+                CaptionML = ENU='Open Amended Document',KOR='수정계산서 문서열기';
                 Image = OpenJournal;
                 Promoted = true;
                 PromotedIsBig = true;
@@ -172,7 +172,9 @@ page 50106 "ETAX Regist Issue"
                     //1. 계산서 발행 대상인지 체크.
                     if Rec."ETAX Document Status" = Rec."ETAX Document Status"::Issued then
                         Error('이미 전자 계산서 발행이 완료된 건입니다.\문서를 확인하세요.');
-
+                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
+                    (Rec."ETAX Before Document No." <> '') then
+                        Error('이 문서는 수정세금계산서 문서입니다.\문서열기를 통해 계산서를 발행하세요.');
                     //2. 계산서 발행.
                     popbill.RegistIssue(Rec,false);
                 end;  
@@ -194,6 +196,9 @@ page 50106 "ETAX Regist Issue"
                     //1. 계산서 발행 대상인지 체크.
                     if Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued then
                         Error('수정세금계산서는 이미 발행 완료된 건에 대해 진행하실 수 있습니다.\문서를 확인하세요.');
+                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
+                    (Rec."ETAX Before Document No." <> '') then
+                        Error('이 문서는 수정세금계산서 문서입니다.\문서를 확인하시고 진행하시기 바랍니다.');
 
                     //2. 계산서 발행.
                     AmendedVATLedger.Reset();
@@ -208,6 +213,7 @@ page 50106 "ETAX Regist Issue"
                         VATLedger.Init();
                         VATLedger.Insert(true);                        
                         VATLedger.TransferFields(Rec,false);
+                        VATLedger."VAT Document Type" := VATLedger."VAT Document Type"::Correction;
                         VATLedger."ETAX Before Document No." := Rec."VAT Document No.";
                         VATLedger."ETAX Document Status" := Rec."ETAX Document Status"::Saved;
                         VATLedger.Modify();
