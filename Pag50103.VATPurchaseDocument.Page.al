@@ -216,7 +216,7 @@ page 50103 "VAT Purchase Document"
                         Error('이미 전자 계산서 발행이 완료된 건입니다.\문서를 확인하세요.');
 
                     //2. 계산서 발행.
-                    popbill.RegistIssue(Rec);
+                    popbill.RegistIssue(Rec,false);
                 end;                  
             }
             action(OpenPopbill)

@@ -72,6 +72,7 @@ table 50102 "VAT Ledger Entries"
         {
             CaptionML = ENU='VAT Omission',KOR='예정누락';
             DataClassification = CustomerContent;
+            Enabled = false; //사용하지 않음.
         }
         field(9; "Credit Card No."; Code[19])
         {
@@ -386,9 +387,9 @@ table 50102 "VAT Ledger Entries"
             CaptionML = ENU='ETAX Mod Issue ID',KOR='수정전세금계산서 발행일련번호';
             DataClassification = CustomerContent;
         }
-        field(68; "ETAX Before Issue ID"; Text[24])
+        field(68; "ETAX Mod Issuer"; Text[24])
         {
-            CaptionML = ENU='ETAX Before Issue ID',KOR='수정전세금계산서 국세청전송일련번호';
+            CaptionML = ENU='ETAX Mod Issuer',KOR='수정전세금계산서 발행 사용자아이디';
             DataClassification = CustomerContent;
         }
         field(69; "ETAX Remark1"; Text[250])
@@ -519,7 +520,22 @@ table 50102 "VAT Ledger Entries"
                     Modify();
                 end;
             end;   
-        }        
+        }      
+        field(87;"ETAX Mod Issue Date";Date)
+        {
+            CaptionML = ENU='ETAX Mod Issue Date',KOR='수정세금계산서 발행요청일';
+            DataClassification = CustomerContent;            
+        } 
+        field(88;"Difference Amount";Decimal)
+        {
+            CaptionML = ENU='Difference',KOR='차액(공급가/환입)';
+            DataClassification = CustomerContent;                        
+        }
+        field(89;"ETAX Before Document No.";Code[25])
+        {
+            CaptionML = ENU='Before Document No.',KOR='수정대상 문서번호';
+            DataClassification = CustomerContent;                        
+        }
     }
     keys
     {

@@ -203,10 +203,18 @@ page 50101 "VAT Ledger Entries"
                 {
                     ApplicationArea = All;
                 }                
-                field("ETAX Before Issue ID"; Rec."ETAX Before Issue ID")
+                field("ETAX Mod Issuer";Rec."ETAX Mod Issuer")
                 {
                     ApplicationArea = All;
                 }                
+                field("ETAX Mod Issue Date";Rec."ETAX Mod Issue Date")
+                {
+                    ApplicationArea = All;                    
+                }
+                field("Difference Amount";Rec."Difference Amount")
+                {
+                    ApplicationArea = All;                                        
+                }
                 field("ETAX Remark1"; Rec."ETAX Remark1")
                 {
                     ApplicationArea = All;
@@ -456,9 +464,11 @@ page 50101 "VAT Ledger Entries"
                         Error('이미 전자 계산서 발행이 완료된 건입니다.\문서를 확인하세요.');
 
                     //2. 계산서 발행.
-                    popbill.RegistIssue(Rec);
+                    popbill.RegistIssue(Rec,false);
                 end;  
             }
+            //TODO 수정세금계산서 발행.
+            //TODO 관련문서 열기 기능추가.
         }
     }
     

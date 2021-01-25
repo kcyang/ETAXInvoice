@@ -6,8 +6,6 @@ POPBILL 연동을 위한 기능을 구현합니다.
 
 TODO !!!0122 단건전송에 대해서, 응답코드/오류코드 처리.
 TODO !!!역발행 처리. (맨 마지막에.)
-TODO !!!수정세금계산서 발행처리.
-TODO 계산서 발행화면 별도로 페이지 개발. (상태/목록/깔끔하게 필요한 내용만 볼 수 있도록.<< 이카운트 참고.)
 TODO SDK 에서 제공하는 전자세금계산서 관련 procedure 를 모두 추가할 것.
 */
 dotnet
@@ -95,7 +93,7 @@ codeunit 50102 VATPopbillFunctions
 
 
     //세금계산서를 즉시발행.
-    procedure RegistIssue(var VATLedger: Record "VAT Ledger Entries")
+    procedure RegistIssue(var VATLedger: Record "VAT Ledger Entries";Amended: boolean)
     var
         popbill: DotNet TaxinvoiceService;
         taxinvoice: DotNet Taxinvoice;
@@ -452,9 +450,16 @@ codeunit 50102 VATPopbillFunctions
 
         // 수정사유코드, 1~6까지 선택기재.
         //TODO 수정세금계산서 부분 개발.필요.
-        //taxinvoice.modifyCode := 0;
-        // 수정세금계산서 작성시 원본세금계산서의 국세청승인번호
-        //taxinvoice.orgNTSConfirmNum := '';
+        if Amended = true then 
+        begin
+            if VATLedger."ETAX Mod Code" = VATLedger."ETAX Mod Code"::" " then
+                Error('수정세금계산서 발급사유가 선택되지 않았습니다.\세금계산서 사유를 선택하고 사유에 따른 정확한 금액을 확인바랍니다.');
+            taxinvoice.modifyCode := VATLedger."ETAX Mod Code".AsInteger();
+            // 수정세금계산서 작성시 원본세금계산서의 국세청승인번호
+            if VATLedger."ETAX Issue ID" = '' then
+                Error('이전 국세청승인번호가 존재하지 않습니다.\이미 발행된 국세청 승인번호가 없으면 수정세금계산서를 발행할 수 없습니다.');
+            taxinvoice.orgNTSConfirmNum := VATLedger."ETAX Issue ID";
+        end;
         //*************************************************************************/
 
         detailedVATLedger.Reset();
@@ -492,12 +497,24 @@ codeunit 50102 VATPopbillFunctions
 
         //5. 결과값 받기.
         //6. 넘어온 키/레코드에 관련 값 업데이트.        
-        VATLedger."ETAX Document Status" := VATLedger."ETAX Document Status"::Issued;
-        VATLedger."ETAX Issue ID" := response.ntsConfirmNum;
-        VATLedger."ETAX Status Code" := Format(response.code);
-        VATLedger."ETAX Issuer" := UserId;
-        VATLedger."ETAX Issue Date" := Today;
-        VATLedger.Modify();
+        //정상발행 건의 경우,
+        if Amended = false then
+        begin
+            VATLedger."ETAX Document Status" := VATLedger."ETAX Document Status"::Issued;
+            VATLedger."ETAX Issue ID" := response.ntsConfirmNum;
+            VATLedger."ETAX Status Code" := Format(response.code);
+            VATLedger."ETAX Issuer" := UserId;
+            VATLedger."ETAX Issue Date" := Today;
+            VATLedger.Modify();
+        end else if Amended = true then 
+        begin
+        //수정세금계산서 발행의 경우.
+            VATLedger."ETAX Mod Issue ID" := response.ntsConfirmNum;
+            VATLedger."ETAX Status Code" := Format(response.code);
+            VATLedger."ETAX Mod Issuer" := UserId;
+            VATLedger."ETAX Mod Issue Date" := Today;
+            VATLedger.Modify();
+        end;
 
         window.Close();
         Message('전자세금 계산서가 발행요청되었습니다.!\상세 상태는 등록된 부가세문서에서 확인하세요.');

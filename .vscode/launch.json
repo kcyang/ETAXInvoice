@@ -9,7 +9,7 @@
             "server": "http://dev2h.com",
             "serverInstance": "BC170",
             "authentication": "UserPassword",
-            "startupObjectId": 22,
+            "startupObjectId": 50106,
             "startupObjectType": "Page",
             "breakOnError": true,
             "launchBrowser": true,
