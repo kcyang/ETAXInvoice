@@ -23,6 +23,10 @@ page 50106 "ETAX Regist Issue"
                 {
                     ApplicationArea = All;
                 }                
+                field("VAT Issue Type";Rec."VAT Issue Type")
+                {
+                    ApplicationArea = All;                    
+                }
                 field("Account No."; Rec."Account No.")
                 {
                     ApplicationArea = All;
@@ -45,7 +49,9 @@ page 50106 "ETAX Regist Issue"
                 }
                 field("ETAX Issue ID"; Rec."ETAX Issue ID")
                 {
+                    Visible = false;
                     ApplicationArea = All;
+                    //HideValue = true;
                 }
                 field("ETAX Document Status"; Rec."ETAX Document Status")
                 {
@@ -90,8 +96,13 @@ page 50106 "ETAX Regist Issue"
                 {
                     ApplicationArea = All;
                 }
+                field("ETAX Before Document No.";Rec."ETAX Before Document No.")
+                {
+                    ApplicationArea = All;                    
+                }
                 field("ETAX Mod Issue ID";Rec."ETAX Mod Issue ID")
                 {
+                    Visible = false;
                     ApplicationArea = All;                    
                 }
             }

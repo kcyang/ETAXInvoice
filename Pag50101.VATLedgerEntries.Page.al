@@ -467,7 +467,6 @@ page 50101 "VAT Ledger Entries"
                     popbill.RegistIssue(Rec,false);
                 end;  
             }
-            //TODO 수정세금계산서 발행.
             //TODO 관련문서 열기 기능추가.
         }
     }

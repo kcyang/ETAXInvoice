@@ -501,7 +501,6 @@ codeunit 50102 VATPopbillFunctions
         *************************************************************************/
 
         // 수정사유코드, 1~6까지 선택기재.
-        //TODO 수정세금계산서 부분 개발.필요.
         if Amended = true then 
         begin
             if VATLedger."ETAX Mod Code" = VATLedger."ETAX Mod Code"::" " then
