@@ -53,6 +53,11 @@ page 50106 "ETAX Regist Issue"
                     Style = StrongAccent;
                     StyleExpr = StyleYN;
                 }
+                field("ETAX Status Code";Rec."ETAX Status Code")
+                {
+                    ApplicationArea = All;
+                    Style = StrongAccent;
+                }
                 field("VAT Claim Type"; Rec."VAT Claim Type")
                 {
                     ApplicationArea = All;
@@ -189,7 +194,7 @@ page 50106 "ETAX Regist Issue"
             }
             action(AmendedRegistIssue)
             {
-                CaptionML = ENU='Amended Tax Invoice Issue',KOR='수정세금계산서 발행';
+                CaptionML = ENU='Amended Tax Invoice Issue',KOR='수정세금계산서 작성';
                 Image = VoidElectronicDocument;
                 Promoted = true;
                 PromotedIsBig = true;
@@ -219,11 +224,13 @@ page 50106 "ETAX Regist Issue"
                     begin
                         //기존에 발행된, 수정세금계산서가 없으면,
                         VATLedger.Init();
-                        VATLedger.Insert(true);                        
-                        VATLedger.TransferFields(Rec,false);
-                        VATLedger."VAT Document Type" := VATLedger."VAT Document Type"::Correction;
-                        VATLedger."ETAX Before Document No." := Rec."VAT Document No.";
-                        VATLedger."ETAX Document Status" := Rec."ETAX Document Status"::Saved;
+                        VATLedger.Insert(true); //신규번호작성후 생성.                        
+                        VATLedger.TransferFields(Rec,false); //기존 내용그대로 복사.
+                        //수정세금계산서 관련 초기값 셋업.
+                        VATLedger."VAT Document Type" := VATLedger."VAT Document Type"::Correction; //수정
+                        VATLedger."ETAX Before Document No." := Rec."VAT Document No."; //이전 부가세문서번호
+                        VATLedger."ETAX Document Status" := Rec."ETAX Document Status"::Saved; //문서 임시저장
+                        VATLedger."ETAX Status Code" := VATLedger."ETAX Status Code"::"Temporary Save"; //전송상태 임시저장
                         VATLedger.Modify();
 
                         detailedVAT.Reset();
@@ -234,6 +241,7 @@ page 50106 "ETAX Regist Issue"
                                 destVAT.Init();
                                 destVAT.TransferFields(detailedVAT,false);
                                 destVAT."VAT Document No." := VATLedger."VAT Document No.";
+                                destVAT."Line No." := detailedVAT."Line No.";
                                 destVAT.Insert();
                             until detailedVAT.Next() = 0;
                         end;
@@ -241,15 +249,31 @@ page 50106 "ETAX Regist Issue"
                         page.Run(page::"Amended tax invoices",AmendedVATLedger);
                     end;                        
                 end;  
-            }            
+            }        
+            action(Reload)
+            {
+                CaptionML = ENU='Reload',KOR='화면새로고침';
+                Image = RelatedInformation;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;    
+                trigger OnAction()
+                begin
+                    CurrPage.Update();
+                end;                 
+            }    
         }
     }    
     //Status 필드 강조효과.
     trigger OnAfterGetRecord()
+    var
+        popbill: Codeunit VATPopbillFunctions;
     begin
         if Rec."ETAX Document Status" = Rec."ETAX Document Status"::Issued then
-            StyleYN := true
-        else
+        begin
+            popbill.GetInfo(Rec);
+            StyleYN := true;
+        end else
             StyleYN := false;
     end;
     var

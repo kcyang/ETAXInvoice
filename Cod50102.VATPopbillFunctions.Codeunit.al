@@ -4,10 +4,8 @@ POPBILL 연동을 위한 기능을 구현합니다.
 - 비밀키(SecretKey) : D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=
 - 링크아이디(LinkID) : 2HC
 
-TODO !!!0122 단건전송에 대해서, 응답코드/오류코드 처리.
 TODO !!!역발행 처리. (맨 마지막에.)
 TODO SDK 에서 제공하는 전자세금계산서 관련 procedure 를 모두 추가할 것.
-TODO !!! 결과처리하는 부분 만들어 놓을 것. (웹서비스??)
 */
 dotnet
 {
@@ -15,8 +13,10 @@ dotnet
     {
         type(Popbill.Taxinvoice.TaxinvoiceService; TaxinvoiceService) { }
         type(Popbill.Taxinvoice.Taxinvoice; Taxinvoice) { }
+        type(Popbill.Taxinvoice.TaxinvoiceInfo; TaxinvoiceInfo) {}
         type(Popbill.Taxinvoice.TaxinvoiceDetail; TaxinvoiceDetail) { }
         type(Popbill.Taxinvoice.TaxinvoiceAddContact; TaxinvoiceAddContact) { }
+        
         type(Popbill.IssueResponse; IssueResponse) { }
         type(Popbill.CorpInfo; CorpInfo) { }
         type(Popbill.Response; Response) { }
@@ -54,6 +54,57 @@ codeunit 50102 VATPopbillFunctions
         popbill.IPRestrictOnOff := true;
         corpinfo := popbill.GetCorpInfo('7558800637', '');
         Message('대표자:%1 \\ 상호:%2 \\ 주소:%3', corpinfo.ceoname, corpinfo.corpName, corpinfo.addr);
+    end;
+    procedure GetInfo(var VATLedger: Record "VAT Ledger Entries")
+    var
+        popbill: DotNet TaxinvoiceService;
+        taxinfo: DotNet TaxinvoiceInfo;
+        MgtKeyType: DotNet TaxIvnoiceMgtKeyType;
+        skey: DotNet dstr;
+        linkid: DotNet dstr;
+        VATCompanyInformation: Record "VAT Company";
+        CorpRegID: Text;
+        statusCode: Integer;
+        //ETAXDocumentType: Enum "ETAX Status";
+    begin
+        Clear(skey);
+        Clear(linkid);
+        Clear(popbill);
+        Clear(taxinfo);
+        Clear(CorpRegID);
+        Clear(statusCode);
+
+        skey := 'D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=';
+        linkid := '2HC';
+        popbill := popbill.TaxinvoiceService(linkid, skey);
+        popbill.IsTest := true;
+        popbill.IPRestrictOnOff := true;        
+
+        VATCompanyInformation.Reset();
+        if VATCompanyInformation.FindFirst() then begin
+            CorpRegID := DelChr(VATCompanyInformation."Corp RegID", '=', '-');
+        end else
+            Error('부가세 회사정보가 정의되지 않았습니다.\부가세회사를 먼저 정의하세요.');
+
+        //일단, 대상인 경우.
+        if (VATLedger."ETAX Document Status" = VATLedger."ETAX Document Status"::Issued) AND 
+        (VATLedger."ETAX Status Code" <> VATLedger."ETAX Status Code"::"Successfully Sent") then
+        begin
+            if VATLedger."VAT Issue Type" = VATLedger."VAT Issue Type"::Sales then 
+            begin
+                taxinfo := popbill.GetInfo(CorpRegID,MgtKeyType::SELL,VATLedger."VAT Document No.");
+            end else if VATLedger."VAT Issue Type" = VATLedger."VAT Issue Type"::Purchase then
+            begin
+                taxinfo := popbill.GetInfo(CorpRegID,MgtKeyType::BUY,VATLedger."VAT Document No.");
+            end;
+
+            statusCode := taxinfo.stateCode;
+            if VATLedger."ETAX Status Code".AsInteger() <> statusCode then
+            begin
+                VATLedger."ETAX Status Code" := "ETAX Status".FromInteger(statusCode);
+                VATLedger.Modify();
+            end;
+        end;
     end;
 
     procedure GetPopUpURL(VATDocumentNo: Text; VATIssueType: Enum "VAT Issue Type")
@@ -503,18 +554,18 @@ codeunit 50102 VATPopbillFunctions
         begin
             VATLedger."ETAX Document Status" := VATLedger."ETAX Document Status"::Issued;
             VATLedger."ETAX Issue ID" := response.ntsConfirmNum;
-            VATLedger."ETAX Status Code" := Format(response.code);
             VATLedger."ETAX Issuer" := UserId;
             VATLedger."ETAX Issue Date" := Today;
+            VATLedger."ETAX Res. Code" := Format(response.code);
             VATLedger.Modify();
         end else if Amended = true then 
         begin
         //수정세금계산서 발행의 경우.
             VATLedger."ETAX Document Status" := VATLedger."ETAX Document Status"::Issued;
             VATLedger."ETAX Mod Issue ID" := response.ntsConfirmNum;
-            VATLedger."ETAX Status Code" := Format(response.code);
             VATLedger."ETAX Mod Issuer" := UserId;
             VATLedger."ETAX Mod Issue Date" := Today;
+            VATLedger."ETAX Res. Code" := Format(response.code);
             VATLedger.Modify();
         end;
 

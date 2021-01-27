@@ -5,7 +5,7 @@ codeunit 50103 PopbillCallback
         exit('퐁');
     end;
 
-    procedure Callback(ntsconfirmNum: Text;itemKey: Text):Text
+    procedure Callback(ntsconfirmNum: Text;itemKey: Text;stateCode:Integer;corpNum:Text;stateDT:Text;invoicerMgtKey:Text;eventDT:Text;eventType:Text;stateMemo:Text/*;closeDownState:Integer;ntssendDT:Text*/):Text
     begin
         exit('OK');
     end;

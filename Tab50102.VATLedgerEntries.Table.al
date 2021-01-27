@@ -407,13 +407,14 @@ table 50102 "VAT Ledger Entries"
             CaptionML = ENU='ETAX Remark3',KOR='비고3';
             DataClassification = CustomerContent;
         }
-        field(72; "ETAX Status Code"; Code[20])
+        field(72; "ETAX Status Code"; Enum "ETAX Status")
         {
-            CaptionML = ENU='ETAX Status Code',KOR='응답 상태코드';
+            CaptionML = ENU='ETAX Status Code',KOR='전자세금계산서 전송상태';
             DataClassification = CustomerContent;
         }
         field(73; "ETAX Status Name"; Text[50])
         {
+            Enabled = false;
             CaptionML = ENU='ETAX Status Name',KOR='응답 상태이름';
             DataClassification = CustomerContent;
         }
@@ -424,6 +425,7 @@ table 50102 "VAT Ledger Entries"
         }
         field(75; "ETAX Res. Msg"; Text[50])
         {
+            Enabled = false;
             CaptionML = ENU='ETAX Res. Msg',KOR='응답메세지';
             DataClassification = CustomerContent;
         }

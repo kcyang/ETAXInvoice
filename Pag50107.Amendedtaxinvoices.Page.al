@@ -6,6 +6,7 @@ page 50107 "Amended tax invoices"
     SourceTable = "VAT Ledger Entries";
     RefreshOnActivate = true;
     Editable = true;
+    SourceTableView = where("VAT Document Type" = filter(Correction));
 
     layout
     {
@@ -40,14 +41,14 @@ page 50107 "Amended tax invoices"
                                 end;
                             Rec."ETAX Mod Code"::"2": //공급가액 변동
                                 begin
-                                    ModifyAmount('POSITIVE');
+                                    ModifyAmount('ZERO');
                                     LineEditable := false; //공급자 차액만큼 입력.
                                     VATDateEditable := true; //변동 발행일자 입력.
                                     Difference := true;
                                 end;
                             Rec."ETAX Mod Code"::"3": //환입
                                 begin
-                                    ModifyAmount('POSITIVE');
+                                    ModifyAmount('ZERO');
                                     LineEditable := false; //환입된 금액만큼 입력.
                                     VATDateEditable := true; //환입일자 입력
                                     Difference := true;
@@ -92,6 +93,15 @@ page 50107 "Amended tax invoices"
                     ApplicationArea = ALL;
                     ToolTip = '수정 대상에 대한 이전 국세청승인번호입니다.';
                     Enabled = false;
+                }
+                field("ETAX Status Code";Rec."ETAX Status Code")
+                {
+                    CaptionML = ENU = 'ETAX Sending Status', KOR = '국세청 전송상태';
+                    ApplicationArea = ALL;
+                    ToolTip = '국세청에 전송중인 상태를 보여줍니다.현재 상태를 보시려면 문서를 열거나 목록에서 새로고침하시면 됩니다.';
+                    Editable = false;
+                    Style = StrongAccent;
+                    StyleExpr = TRUE;                             
                 }
             }
             group(RegistType)
@@ -250,6 +260,7 @@ page 50107 "Amended tax invoices"
                     CaptionML = ENU = 'Difference Amount', KOR = '차액(공급가/환입)';
                     ApplicationArea = ALL;
                     Enabled = Difference;
+                    Editable = groupEditable;
                     ToolTip = '수정세금계산서 사유가 공급가/환입의 경우 차액에 대해서 증가면 (+) 금액을\감소면 (-) 금액을 입력합니다.';
                     trigger OnValidate()
                     var
@@ -258,8 +269,9 @@ page 50107 "Amended tax invoices"
                         detailedVATLedger.Reset();
                         detailedVATLedger.SetRange("VAT Document No.", Rec."VAT Document No.");
                         if detailedVATLedger.Find('-') then begin
-                            detailedVATLedger."Actual Amount" := Rec."Difference Amount";
-                            detailedVATLedger.Modify(true);
+                            detailedVATLedger.Validate("Actual Amount",Rec."Difference Amount");
+                            detailedVATLedger.Modify();
+                            CurrPage.Update();
                         end;
                     end;
                 }
@@ -373,6 +385,39 @@ page 50107 "Amended tax invoices"
 
                 end;
             }
+            action(getPreDocumentAmount)
+            {
+                CaptionML = ENU = 'Get Pre Document Amount', KOR = '수정문서 금액다시불러오기';
+                Image = GetLines;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;           
+                Enabled = groupEditable;     
+                trigger OnAction()
+                var
+                    detailedVATLedger: Record "detailed VAT Ledger Entries";
+                    xDetailedVATLedger: Record "detailed VAT Ledger Entries";                
+                begin
+                    xDetailedVATLedger.Reset();
+                    xDetailedVATLedger.SetRange("VAT Document No.",Rec."ETAX Before Document No.");
+                    if xDetailedVATLedger.FindSet() then
+                    begin
+                        repeat
+                            detailedVATLedger.Reset();
+                            detailedVATLedger.SetRange("VAT Document No.",Rec."VAT Document No.");
+                            detailedVATLedger.SetRange("Line No.",xDetailedVATLedger."Line No.");
+                            if detailedVATLedger.find('-') then
+                            begin
+                                detailedVATLedger."Actual Amount" := xDetailedVATLedger."Actual Amount";
+                                detailedVATLedger."Tax Amount" := xDetailedVATLedger."Tax Amount";
+                                detailedVATLedger."Line Total Amount" := xDetailedVATLedger."Line Total Amount";
+                                detailedVATLedger.Modify();
+                                CurrPage.Update();
+                            end;
+                        until xDetailedVATLedger.Next() = 0;
+                    end;
+                end;
+            }
         }
     }
     trigger OnAfterGetCurrRecord()
@@ -381,6 +426,12 @@ page 50107 "Amended tax invoices"
             groupEditable := false
         else
             groupEditable := true;
+        
+        if (Rec."ETAX Mod Code" = "ETAX Mod Code"::"2") OR 
+        (Rec."ETAX Mod Code" = "ETAX Mod Code"::"3") then
+            Difference := true
+        else
+            Difference := false;
 
     end;
 
@@ -410,17 +461,21 @@ page 50107 "Amended tax invoices"
                     detailedVATLedger.Modify(true);
                     CurrPage.Update();
                 end;
-            end else
-                if ModifyType = 'NEGATIVE' then begin
-                    if detailedVATLedger."Actual Amount" > 0 then begin
-                        detailedVATLedger."Actual Amount" := detailedVATLedger."Actual Amount" * -1;
-                        detailedVATLedger."Tax Amount" := detailedVATLedger."Tax Amount" * -1;
-                        detailedVATLedger."Line Total Amount" := detailedVATLedger."Line Total Amount" * -1;
-                        detailedVATLedger.Modify(true);
-                        CurrPage.Update();
-                    end;
-                end else
-                    exit;
+            end else if ModifyType = 'NEGATIVE' then begin
+                if detailedVATLedger."Actual Amount" > 0 then begin
+                    detailedVATLedger."Actual Amount" := detailedVATLedger."Actual Amount" * -1;
+                    detailedVATLedger."Tax Amount" := detailedVATLedger."Tax Amount" * -1;
+                    detailedVATLedger."Line Total Amount" := detailedVATLedger."Line Total Amount" * -1;
+                    detailedVATLedger.Modify(true);
+                    CurrPage.Update();
+                end;
+            end else if ModifyType = 'ZERO' then begin
+                detailedVATLedger."Actual Amount" := 0;
+                detailedVATLedger."Tax Amount" := 0;
+                detailedVATLedger."Line Total Amount" := 0;
+                detailedVATLedger.Modify(true);
+                CurrPage.Update();
+            end;
         end;
     end;
 
