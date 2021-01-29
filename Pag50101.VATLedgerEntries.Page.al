@@ -428,6 +428,59 @@ page 50101 "VAT Ledger Entries"
                         ;
                 end;
             }
+            action(OpenRelatedDocument)
+            {
+                CaptionML = ENU='Open Related Document',KOR='관련 문서열기';
+                Image = OpenJournal;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;
+                trigger OnAction()
+                var
+                    postedSalesInvoice: Record "Sales Invoice Header";
+                    postedSalesCrMemo: Record "Sales Cr.Memo Header";
+                    postedPurchInvoice: Record "Purch. Inv. Header";
+                    postedPurchCrMemo: Record "Purch. Cr. Memo Hdr.";
+                begin
+                    if Rec."Linked Document No." <> '' then
+                    begin
+                        if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Purchase then
+                        begin
+                            CASE Rec."Linked Document Type" of
+                                Rec."Linked Document Type"::Order,Rec."Linked Document Type"::Invoice:
+                                begin
+                                    if postedPurchInvoice.get(Rec."Linked Document No.") then
+                                        page.Run(page::"Posted Purchase Invoice",postedPurchInvoice);
+                                end;
+                                Rec."Linked Document Type"::"Return Order",Rec."Linked Document Type"::"Credit Memo":
+                                begin
+                                    if postedPurchCrMemo.get(Rec."Linked Document No.") then
+                                        page.Run(page::"Posted Purchase Credit Memo",postedPurchCrMemo);
+                                end;
+                                else
+                                ;
+                            END;
+                        end else if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
+                        begin
+                            CASE Rec."Linked Document Type" of
+                                Rec."Linked Document Type"::Order,Rec."Linked Document Type"::Invoice:
+                                begin
+                                    if postedSalesInvoice.get(Rec."Linked Document No.") then
+                                        page.Run(page::"Posted Sales Invoice",postedSalesInvoice);
+                                end;
+                                Rec."Linked Document Type"::"Return Order",Rec."Linked Document Type"::"Credit Memo":
+                                begin
+                                    if postedSalesCrMemo.get(Rec."Linked Document No.") then
+                                        page.Run(page::"Posted Sales Credit Memo",postedSalesCrMemo);
+                                end;
+                                else
+                                ;
+                            END;
+                        end;                       
+                    end else
+                        Message('관련 문서가 없는 계산서 입니다.\문서열기를 통해 문서를 확인하세요.');
+                end;                
+            }            
             action(OpenPopbill)
             {
                 CaptionML = ENU='Open ETAX Document',KOR='세금계산서 보기';

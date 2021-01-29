@@ -6,6 +6,7 @@ POPBILL 연동을 위한 기능을 구현합니다.
 
 TODO !!!역발행 처리. (맨 마지막에.)
 TODO SDK 에서 제공하는 전자세금계산서 관련 procedure 를 모두 추가할 것.
+TODO 상세내역이 여러건인 경우 처리 필요.
 */
 dotnet
 {
@@ -30,6 +31,60 @@ dotnet
 }
 codeunit 50102 VATPopbillFunctions
 {
+    procedure TestFunction()
+    var
+        popbill: DotNet TaxinvoiceService;
+        taxinvoice: DotNet Taxinvoice;
+        taxdeail: DotNet TaxinvoiceDetail;
+        taxcontact: DotNet TaxinvoiceAddContact;
+        skey: DotNet dstr;
+        linkid: DotNet dstr;        
+        ListofTax: DotNet dlist;
+    begin
+        ClearAll();
+        skey := 'D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=';
+        linkid := '2HC';
+        popbill := popbill.TaxinvoiceService(linkid, skey);
+        popbill.IsTest := true;
+        popbill.IPRestrictOnOff := true;
+
+        taxinvoice := taxinvoice.Taxinvoice();
+        taxdeail := taxdeail.TaxinvoiceDetail();
+
+        taxdeail.serialNum := 1;
+        taxdeail.purchaseDT := Format(Today, 0, '<Year4><Month,2><Day,2>');
+        taxdeail.itemName := 'Description.';
+        taxdeail.spec := 'Spec';
+        taxdeail.qty := '1';
+        taxdeail.unitCost := '10000';
+        taxdeail.supplyCost := '10000';
+        taxdeail.tax := '1000';
+        taxdeail.remark := 'Remark';        
+
+        //ListofTax := ListofTax.List();
+        //ListofTax.Add(taxdeail);
+
+        taxinvoice.issueType := '정발행';
+        taxinvoice.taxType := '과세';
+        taxinvoice.chargeDirection := '정과금';
+        taxinvoice.writeDate := '20210128';
+        taxinvoice.purposeType := '청구';
+        taxinvoice.supplyCostTotal := '10000';
+        taxinvoice.taxTotal := '1000';
+        taxinvoice.totalAmount := '11000';
+        taxinvoice.invoicerCorpNum := '7558800637';
+        taxinvoice.invoicerCorpName := '(주)투에이치컨설팅';
+        taxinvoice.invoicerCEOName := '한주영';
+        taxinvoice.invoiceeType := '사업자';
+        taxinvoice.invoiceeCorpNum := '3578700947';
+        taxinvoice.invoiceeCEOName := '양광철';
+
+        taxinvoice.detailList := taxinvoice.detailList();
+        taxinvoice.detailList.Add(taxdeail);
+
+        popbill.Register('7558800637',taxinvoice,'',false);
+
+    end;
     procedure GetCorpInfo()
     var
         popbill: DotNet TaxinvoiceService;

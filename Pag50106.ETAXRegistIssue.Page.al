@@ -112,6 +112,59 @@ page 50106 "ETAX Regist Issue"
     {
         area(Navigation)
         {
+            action(OpenRelatedDocument)
+            {
+                CaptionML = ENU='Open Related Document',KOR='관련 문서열기';
+                Image = OpenJournal;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;
+                trigger OnAction()
+                var
+                    postedSalesInvoice: Record "Sales Invoice Header";
+                    postedSalesCrMemo: Record "Sales Cr.Memo Header";
+                    postedPurchInvoice: Record "Purch. Inv. Header";
+                    postedPurchCrMemo: Record "Purch. Cr. Memo Hdr.";
+                begin
+                    if Rec."Linked Document No." <> '' then
+                    begin
+                        if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Purchase then
+                        begin
+                            CASE Rec."Linked Document Type" of
+                                Rec."Linked Document Type"::Order,Rec."Linked Document Type"::Invoice:
+                                begin
+                                    if postedPurchInvoice.get(Rec."Linked Document No.") then
+                                        page.Run(page::"Posted Purchase Invoice",postedPurchInvoice);
+                                end;
+                                Rec."Linked Document Type"::"Return Order",Rec."Linked Document Type"::"Credit Memo":
+                                begin
+                                    if postedPurchCrMemo.get(Rec."Linked Document No.") then
+                                        page.Run(page::"Posted Purchase Credit Memo",postedPurchCrMemo);
+                                end;
+                                else
+                                ;
+                            END;
+                        end else if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
+                        begin
+                            CASE Rec."Linked Document Type" of
+                                Rec."Linked Document Type"::Order,Rec."Linked Document Type"::Invoice:
+                                begin
+                                    if postedSalesInvoice.get(Rec."Linked Document No.") then
+                                        page.Run(page::"Posted Sales Invoice",postedSalesInvoice);
+                                end;
+                                Rec."Linked Document Type"::"Return Order",Rec."Linked Document Type"::"Credit Memo":
+                                begin
+                                    if postedSalesCrMemo.get(Rec."Linked Document No.") then
+                                        page.Run(page::"Posted Sales Credit Memo",postedSalesCrMemo);
+                                end;
+                                else
+                                ;
+                            END;
+                        end;                       
+                    end else
+                        Message('관련 문서가 없는 계산서 입니다.\문서열기를 통해 문서를 확인하세요.');
+                end;                
+            }
             action(OpenDocument)
             {
                 CaptionML = ENU='Open Document',KOR='문서열기';
@@ -220,6 +273,8 @@ page 50106 "ETAX Regist Issue"
                     //1. 계산서 발행 대상인지 체크.
                     if Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued then
                         Error('수정세금계산서는 이미 발행 완료된 건에 대해 진행하실 수 있습니다.\문서를 확인하세요.');
+                        
+                    //FIXME 수정세금계산서를 또 수정할 수 있음. 안되는 경우를 제외하고 진행할 수 있도록 수정해야 함.    
                     if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
                     (Rec."ETAX Before Document No." <> '') then
                         Error('이 문서는 수정세금계산서 문서입니다.\문서를 확인하시고 진행하시기 바랍니다.');
