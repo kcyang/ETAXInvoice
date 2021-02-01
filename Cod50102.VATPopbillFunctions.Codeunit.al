@@ -49,8 +49,9 @@ codeunit 50102 VATPopbillFunctions
         popbill.IPRestrictOnOff := true;
 
         taxinvoice := taxinvoice.Taxinvoice();
-        taxdeail := taxdeail.TaxinvoiceDetail();
+        ListofTax := taxinvoice.GetTaxinvoiceDetails();
 
+        taxdeail := taxdeail.TaxinvoiceDetail();
         taxdeail.serialNum := 1;
         taxdeail.purchaseDT := Format(Today, 0, '<Year4><Month,2><Day,2>');
         taxdeail.itemName := 'Description.';
@@ -60,27 +61,38 @@ codeunit 50102 VATPopbillFunctions
         taxdeail.supplyCost := '10000';
         taxdeail.tax := '1000';
         taxdeail.remark := 'Remark';        
+        ListofTax.Add(taxdeail);
 
-        //ListofTax := ListofTax.List();
-        //ListofTax.Add(taxdeail);
+        taxdeail := taxdeail.TaxinvoiceDetail();
+        taxdeail.serialNum := 2;
+        taxdeail.purchaseDT := Format(Today, 0, '<Year4><Month,2><Day,2>');
+        taxdeail.itemName := '두번째 아이템이름';
+        taxdeail.spec := '스펙';
+        taxdeail.qty := '3';
+        taxdeail.unitCost := '20000';
+        taxdeail.supplyCost := '20000';
+        taxdeail.tax := '2000';
+        taxdeail.remark := '비고비고비고';        
+        ListofTax.Add(taxdeail);             
 
         taxinvoice.issueType := '정발행';
         taxinvoice.taxType := '과세';
         taxinvoice.chargeDirection := '정과금';
         taxinvoice.writeDate := '20210128';
         taxinvoice.purposeType := '청구';
-        taxinvoice.supplyCostTotal := '10000';
-        taxinvoice.taxTotal := '1000';
-        taxinvoice.totalAmount := '11000';
+        taxinvoice.supplyCostTotal := '30000';
+        taxinvoice.taxTotal := '3000';
+        taxinvoice.totalAmount := '33000';
         taxinvoice.invoicerCorpNum := '7558800637';
         taxinvoice.invoicerCorpName := '(주)투에이치컨설팅';
         taxinvoice.invoicerCEOName := '한주영';
+        taxinvoice.invoicerMgtKey := 'TESTVAT000002';
         taxinvoice.invoiceeType := '사업자';
-        taxinvoice.invoiceeCorpNum := '3578700947';
+        taxinvoice.invoiceeCorpNum := '3578700926';
+        taxinvoice.invoiceeCorpName := '주식회사 지앤컨설팅';
         taxinvoice.invoiceeCEOName := '양광철';
 
-        taxinvoice.detailList := taxinvoice.detailList();
-        taxinvoice.detailList.Add(taxdeail);
+        taxinvoice.detailList := ListofTax;
 
         popbill.Register('7558800637',taxinvoice,'',false);
 
@@ -197,8 +209,7 @@ codeunit 50102 VATPopbillFunctions
         //OPEN URL.
         Hyperlink(urlInfor);
     end;
-
-
+    
     //세금계산서를 즉시발행.
     procedure RegistIssue(var VATLedger: Record "VAT Ledger Entries";Amended: boolean)
     var
@@ -208,6 +219,7 @@ codeunit 50102 VATPopbillFunctions
         response: DotNet IssueResponse;
         skey: DotNet dstr;
         linkid: DotNet dstr;
+        ListofTax: DotNet dlist;
 
         VATCompanyInformation: Record "VAT Company";
         VATCategory: Record "VAT Category";
@@ -568,6 +580,8 @@ codeunit 50102 VATPopbillFunctions
         end;
         //*************************************************************************/
 
+        ListofTax := taxinvoice.GetTaxinvoiceDetails(); //List<TaxinvoiceDetail> 을 가져오는 구문.
+
         detailedVATLedger.Reset();
         detailedVATLedger.SetRange("VAT Document No.", VATLedger."VAT Document No.");
         SerialNum := 0;
@@ -584,11 +598,14 @@ codeunit 50102 VATPopbillFunctions
                 taxinvoicedetail.supplyCost := Format(detailedVATLedger."Actual Amount");
                 taxinvoicedetail.tax := Format(detailedVATLedger."Tax Amount");
                 taxinvoicedetail.remark := detailedVATLedger.Remark;
+                ListofTax.Add(taxinvoicedetail); //Detail List 집어넣기.
             until detailedVATLedger.Next() = 0;
         end;
-
+        taxinvoice.detailList := ListofTax; //SET List<TaxinvoiceDetial>...
         //4. popbill 연동.
-        //response := popbill.RegistIssue('',taxinvoice,false,'',false,'','');
+        response := popbill.RegistIssue(CorpRegID,taxinvoice,false,'',false,'','');
+#region IMSI
+/*      //임시로 사용했던 Function.     
         response := popbill.RegistOneIssue(CorpRegID, taxinvoice,
             taxinvoicedetail.serialNum,
             taxinvoicedetail.purchaseDT,
@@ -600,7 +617,8 @@ codeunit 50102 VATPopbillFunctions
             taxinvoicedetail.tax,
             taxinvoicedetail.remark,
             false, '', false, '', '');
-
+*/
+#endregion
         //5. 결과값 받기.
         //6. 넘어온 키/레코드에 관련 값 업데이트.        
         //정상발행 건의 경우,

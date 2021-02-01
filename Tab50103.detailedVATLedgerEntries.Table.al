@@ -14,6 +14,7 @@ table 50103 "detailed VAT Ledger Entries"
         field(2; "Line No."; Integer)
         {
             CaptionML = ENU='Line No.',KOR='라인번호';
+            AutoIncrement = true;
             DataClassification = CustomerContent;
         }
         field(3; "VAT Document Date"; Date)

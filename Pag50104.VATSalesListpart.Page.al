@@ -18,15 +18,15 @@ page 50104 "VAT Sales Listpart"
                 {
                     ApplicationArea = All;
                 }
+                field("Line No."; Rec."Line No.")
+                {
+                    ApplicationArea = All;
+                }                
                 field("Item No."; Rec."Item No.")
                 {
                     ApplicationArea = All;
                 }
                 field("Item Description"; Rec."Item Description")
-                {
-                    ApplicationArea = All;
-                }
-                field("Line No."; Rec."Line No.")
                 {
                     ApplicationArea = All;
                 }
