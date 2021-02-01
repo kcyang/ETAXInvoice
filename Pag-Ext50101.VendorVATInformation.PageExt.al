@@ -205,7 +205,21 @@ pageextension 50101 "Vendor VAT Information" extends "Vendor Card"
     }
     actions
     {
-        //TODO 추가연락처 등록할 수 있는 버튼추가.
+        addfirst("Ven&dor")
+        {
+            action(AdditionalContacts)
+            {
+                ApplicationArea = All;
+                CaptionML = ENU='Additional Contacts',KOR='부가세담당자';
+                Image = ContactPerson;
+                Promoted = true;
+                PromotedIsBig = true;
+                RunObject = Page "VAT Contacts";
+                RunPageLink = "Account Type" = filter(Vendor),
+                              "No." = field("No.");
+                ToolTip = '추가 계산서 담당자를 입력합니다. 부가세 정보탭에서 2명까지는 바로 입력하시면 됩니다.';
+            }
+        }        
     }
     trigger OnAfterGetRecord()
     var

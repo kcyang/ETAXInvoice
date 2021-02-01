@@ -60,6 +60,9 @@ table 50104 "TAXInvoice Contacts"
             Clustered = true;
         }
     }
-    
+    trigger OnInsert()
+    begin
+        
+    end;
 }
 //TODO Customer,Vendor 에 연결된 경우, 수정하면 함께 수정될 것. (key-no,line no 1)

@@ -7,7 +7,7 @@ page 50104 "VAT Sales Listpart"
     CaptionML = ENU='Item Lines',KOR='항목';
     PageType = ListPart;
     SourceTable = "detailed VAT Ledger Entries";
-    
+    AutoSplitKey = true;
     layout
     {
         area(content)

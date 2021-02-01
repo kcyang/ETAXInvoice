@@ -6,7 +6,8 @@ TODO Service Credit Memo, Service Return Order
 */
 codeunit 50100 "VAT Functions"
 {
-
+/*  //아래 procedure 는, posting 후에 라인을 삭제하는 경우에도 동작하기 때문에,
+    //FIXME disable 하고, 추후에 다른 기능으로 진행할 것.
     //General Journal 에서 라인을 삭제하는 경우, 관련 내용이 있는경우, 삭제한다.
     [EventSubscriber(ObjectType::Table, Database::"Gen. Journal Line", 'OnAfterDeleteEvent', '', false, false)]
     local procedure OnAfterDeleteJournalLine(var Rec: Record "Gen. Journal Line")
@@ -24,7 +25,7 @@ codeunit 50100 "VAT Functions"
       until VATLedgerEntries.Next() = 0;
       end;
     end;
-
+*/
     [EventSubscriber(ObjectType::Table, Database::"Gen. Journal Line", 'OnAfterValidateEvent', 'Document No.', false, false)]
     local procedure OnAfterValidateGeneralJournalLineEvent(var Rec: Record "Gen. Journal Line";var xRec: Record "Gen. Journal Line")
     var

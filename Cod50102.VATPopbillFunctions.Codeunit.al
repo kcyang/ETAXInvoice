@@ -216,14 +216,17 @@ codeunit 50102 VATPopbillFunctions
         popbill: DotNet TaxinvoiceService;
         taxinvoice: DotNet Taxinvoice;
         taxinvoicedetail: DotNet TaxinvoiceDetail;
+        taxinvoicecontact: DotNet TaxinvoiceAddContact;
         response: DotNet IssueResponse;
         skey: DotNet dstr;
         linkid: DotNet dstr;
         ListofTax: DotNet dlist;
+        ListofContact: DotNet dlist;
 
         VATCompanyInformation: Record "VAT Company";
         VATCategory: Record "VAT Category";
         detailedVATLedger: Record "detailed VAT Ledger Entries";
+        VATContacts: Record "TAXInvoice Contacts";
         CorpRegID: Text;
         AccountRegID: Text;
         kwon: Integer;
@@ -239,6 +242,9 @@ codeunit 50102 VATPopbillFunctions
         Clear(response);
         Clear(taxinvoice);
         Clear(taxinvoicedetail);
+        Clear(taxinvoicecontact);
+        Clear(ListofContact);
+        Clear(ListofTax);
 
         Clear(CorpRegID);
         Clear(AccountRegID);
@@ -420,6 +426,7 @@ codeunit 50102 VATPopbillFunctions
             taxinvoice.invoiceeBizClass := VATLedger."Account Biz Class";
             // 공급받는자 업태 
             taxinvoice.invoiceeBizType := VATLedger."Account Biz Type";
+
             // 공급받는자 담당자 연락처
             taxinvoice.invoiceeTEL1 := VATLedger."Account Contact Phone";
             // 공급받는자 담당자명 
@@ -442,6 +449,31 @@ codeunit 50102 VATPopbillFunctions
             taxinvoice.invoiceeHP1 := '010-8732-4043';
             //**********************************************/
 
+            /*
+            * 부 담당자가 입력된 경우 (이름/이메일주소가 있는경우)
+            */
+            if (VATLedger."Account Contact Name2" <> '') AND
+            (VATLedger."Account Contact Email2" <> '') then
+            begin
+                // 공급받는자 담당자 연락처
+                taxinvoice.invoiceeTEL2 := VATLedger."Account Contact Phone2";
+                // 공급받는자 담당자명 
+                taxinvoice.invoiceeContactName2 := VATLedger."Account Contact Name2";
+                // 공급받는자 담당자 메일주소 
+                // 팝빌 개발환경에서 테스트하는 경우에도 안내 메일이 전송되므로,
+                // 실제 거래처의 메일주소가 기재되지 않도록 주의
+                taxinvoice.invoiceeEmail2 := VATLedger."Account Contact Email2";
+                //**********************************************/
+                //FIXME 테스트할 때에는 Fix.
+                taxinvoice.invoiceeEmail2 := 'kc.yang@2hc.co.kr';
+                //**********************************************/
+                // 공급받는자 담당자 휴대폰번호 
+                taxinvoice.invoiceeHP2 := VATLedger."Account Contact Phone2";
+                //**********************************************/
+                //FIXME 테스트할 때에는 Fix.
+                taxinvoice.invoiceeHP2 := '010-8732-4043';
+                //**********************************************/
+            end;
             // 역발행시 알림문자 전송여부 
             taxinvoice.invoiceeSMSSendYN := false;
         end
@@ -580,12 +612,11 @@ codeunit 50102 VATPopbillFunctions
         end;
         //*************************************************************************/
 
-        ListofTax := taxinvoice.GetTaxinvoiceDetails(); //List<TaxinvoiceDetail> 을 가져오는 구문.
-
         detailedVATLedger.Reset();
         detailedVATLedger.SetRange("VAT Document No.", VATLedger."VAT Document No.");
         SerialNum := 0;
         if detailedVATLedger.FindSet() then begin
+            ListofTax := taxinvoice.GetTaxinvoiceDetails(); //List<TaxinvoiceDetail> 을 가져오는 구문.            
             repeat
                 SerialNum += 1;
                 taxinvoicedetail := taxinvoicedetail.TaxinvoiceDetail();
@@ -600,8 +631,34 @@ codeunit 50102 VATPopbillFunctions
                 taxinvoicedetail.remark := detailedVATLedger.Remark;
                 ListofTax.Add(taxinvoicedetail); //Detail List 집어넣기.
             until detailedVATLedger.Next() = 0;
+            taxinvoice.detailList := ListofTax; //SET List<TaxinvoiceDetial>...            
         end;
-        taxinvoice.detailList := ListofTax; //SET List<TaxinvoiceDetial>...
+
+        /*
+        * 추가 담당자가 있을 경우, 최대 5명까지 입력.
+        */
+        VATContacts.Reset();
+        if VATLedger."VAT Issue Type" = VATLedger."VAT Issue Type"::Sales then
+            VATContacts.SetRange("Account Type","Account Type"::Customer)
+        else
+            VATContacts.SetRange("Account Type","Account Type"::Vendor);
+
+        VATContacts.SetRange("No.",VATLedger."Account No.");
+
+        //추가 담당자가 있을때만, 값을 입력함.
+        if VATContacts.FindSet() then
+        begin
+            ListofContact := taxinvoice.GetTaxinvoiceAddContacts();
+            repeat
+                taxinvoicecontact := taxinvoicecontact.TaxinvoiceAddContact();
+                taxinvoicecontact.serialNum := VATContacts."Line No.";
+                taxinvoicecontact.contactName := VATContacts."Contact Name";
+                taxinvoicecontact.email := VATContacts."Contact Email";
+                ListofContact.Add(taxinvoicecontact);
+            until VATContacts.Next() = 0;
+            taxinvoice.addContactList := ListofContact;
+        end;
+
         //4. popbill 연동.
         response := popbill.RegistIssue(CorpRegID,taxinvoice,false,'',false,'','');
 #region IMSI
