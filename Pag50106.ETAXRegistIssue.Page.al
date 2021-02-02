@@ -19,6 +19,10 @@ page 50106 "ETAX Regist Issue"
                 {
                     ApplicationArea = All;
                 }
+                field(Statement;Rec.Statement)
+                {
+                    ApplicationArea = All;
+                }
                 field("VAT Document Type"; Rec."VAT Document Type")
                 {
                     ApplicationArea = All;
@@ -63,6 +67,19 @@ page 50106 "ETAX Regist Issue"
                 {
                     ApplicationArea = All;
                     Style = StrongAccent;
+                }
+                field("Statement Type";"Statement Type")
+                {
+                    ApplicationArea = All;
+                }
+                field("Statement Issue Date";"Statement Issue Date")
+                {
+                    ApplicationArea = All;
+                }
+                field("Statement Status";"Statement Status")
+                {
+                    ApplicationArea = All;
+                    Style = StandardAccent;                    
                 }
                 field("VAT Claim Type"; Rec."VAT Claim Type")
                 {
@@ -112,6 +129,33 @@ page 50106 "ETAX Regist Issue"
     {
         area(Navigation)
         {
+            action(OpenDocument)
+            {
+                CaptionML = ENU='Open Document',KOR='문서열기';
+                Image = OpenJournal;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;
+
+                trigger OnAction()
+                begin
+                    //이전문서가 있으면, 수정세금 계산서문서이므로, 수정계산서 문서로 표시함.
+                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction)
+                      AND (Rec."ETAX Before Document No." <> '') then
+                    begin
+                        page.Run(page::"Amended tax invoices",Rec);
+                    end else
+                    begin
+                        //그 외 문서는 일반적인 문서, 매출/매입에 따라 문서 열기.
+                        if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
+                            page.Run(page::"VAT Sales Document",Rec)
+                        else if Rec."VAT Issue Type" = rec."VAT Issue Type"::Purchase then
+                            page.Run(page::"VAT Purchase Document",Rec)
+                        else
+                            ;
+                    end;                        
+                end;
+            }            
             action(OpenRelatedDocument)
             {
                 CaptionML = ENU='Open Related Document',KOR='관련 문서열기';
@@ -165,33 +209,6 @@ page 50106 "ETAX Regist Issue"
                         Message('관련 문서가 없는 계산서 입니다.\문서열기를 통해 문서를 확인하세요.');
                 end;                
             }
-            action(OpenDocument)
-            {
-                CaptionML = ENU='Open Document',KOR='문서열기';
-                Image = OpenJournal;
-                Promoted = true;
-                PromotedIsBig = true;
-                ApplicationArea = ALL;
-
-                trigger OnAction()
-                begin
-                    //이전문서가 있으면, 수정세금 계산서문서이므로, 수정계산서 문서로 표시함.
-                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction)
-                      AND (Rec."ETAX Before Document No." <> '') then
-                    begin
-                        page.Run(page::"Amended tax invoices",Rec);
-                    end else
-                    begin
-                        //그 외 문서는 일반적인 문서, 매출/매입에 따라 문서 열기.
-                        if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
-                            page.Run(page::"VAT Sales Document",Rec)
-                        else if Rec."VAT Issue Type" = rec."VAT Issue Type"::Purchase then
-                            page.Run(page::"VAT Purchase Document",Rec)
-                        else
-                            ;
-                    end;                        
-                end;
-            }
             action(OpenPopbill)
             {
                 CaptionML = ENU='Open ETAX Document',KOR='세금계산서 보기';
@@ -229,9 +246,25 @@ page 50106 "ETAX Regist Issue"
                     else
                         Message('문서에 해당하는 수정세금계산서가 없습니다.\수정세금계산서 발행버튼을 눌러 진행하세요.');
 
-                    
                 end;
-            }            
+            }  
+            action(OpenStatementPopbill)
+            {
+                CaptionML = ENU='Open Statement Document',KOR='명세서 보기';
+                Image = LaunchWeb;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;
+
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    if Rec.Statement = false then
+                        Error('명세서가 발행(요청)되지 않았습니다.\명세서를 열 수 없습니다.');
+                    popbill.GetStatementPopUpURL(Rec."VAT Document No.",Rec."Statement Type");
+                end;                
+            }                      
         }
         area(Processing)
         {
@@ -256,6 +289,52 @@ page 50106 "ETAX Regist Issue"
                     popbill.RegistIssue(Rec,false);
                 end;  
             }
+            action(RegistStatementIssue)
+            {
+                CaptionML = ENU='Regist Statement Issue',KOR='전자명세서 발행';
+                Image = ElectronicVATExemption;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;              
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    //1. 계산서 발행 대상인지 체크.
+                    if (Rec."Statement Status" = Rec."Statement Status"::"Approval Pending") OR 
+                    (Rec."Statement Status" = Rec."Statement Status"::Issued) then
+                        Error('이미 전자 명세서 발행이 요청/완료된 건입니다.\문서를 확인하세요.');
+                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
+                    (Rec."ETAX Before Document No." <> '') then
+                        Error('이 문서는 수정세금계산서 문서입니다.\문서열기를 통해 계산서를 발행하세요.');
+                    //2. 명세서 발행.
+                    popbill.RegistStatementIssue(Rec);
+                end;  
+            }           
+            action(CancelStatementIssue)
+            {
+                CaptionML = ENU='Cancel Statement Issue',KOR='전자명세서 발행취소';
+                Image = VoidAllElectronicDocuments;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;              
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    //1. 계산서 발행 대상인지 체크.
+                    /*
+                    if Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued then
+                        Error('전자 명세서 발행이 완료된 건에 대해서 취소를 할 수 있습니다.\문서를 확인하세요.');
+                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
+                    (Rec."ETAX Before Document No." <> '') then
+                        Error('이 문서는 수정세금계산서 문서입니다.\문서열기를 통해 계산서를 발행하세요.');
+                    */
+                    //2. 명세서 발행.
+                    //popbill.RegistIssue(Rec,false);
+                    Message('개발중!!!');
+                end;  
+            }                   
             action(AmendedRegistIssue)
             {
                 CaptionML = ENU='Amended Tax Invoice Issue',KOR='수정세금계산서 작성';
@@ -341,6 +420,12 @@ page 50106 "ETAX Regist Issue"
             StyleYN := true;
         end else
             StyleYN := false;
+        
+        if (Rec."Statement Status" = Rec."Statement Status"::"Approval Pending") AND
+        (Rec.Statement = true) then
+        begin
+            popbill.GetStatementInfo(Rec);
+        end;
     end;
     var
         StyleYN: Boolean;

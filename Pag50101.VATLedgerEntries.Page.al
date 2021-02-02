@@ -20,6 +20,10 @@ page 50101 "VAT Ledger Entries"
         {
             repeater(General)
             {
+                field("Statement"; Rec.Statement)
+                {
+                    ApplicationArea = All;
+                }                
                 field("VAT Document No."; Rec."VAT Document No.")
                 {
                     ApplicationArea = All;
@@ -255,11 +259,11 @@ page 50101 "VAT Ledger Entries"
                 {
                     ApplicationArea = All;
                 }                
-                field("ETAX Sending Status"; Rec."ETAX Sending Status")
+                field("Statement Issue Date"; Rec."Statement Issue Date")
                 {
                     ApplicationArea = All;
                 }                
-                field("ETAX Detailed Res. Msg"; Rec."ETAX Detailed Res. Msg")
+                field("Statement Status"; Rec."Statement Status")
                 {
                     ApplicationArea = All;
                 }                
@@ -342,10 +346,6 @@ page 50101 "VAT Ledger Entries"
                     ApplicationArea = All;
                 }
                 field("ETAX SMS Sending"; Rec."ETAX SMS Sending")
-                {
-                    ApplicationArea = All;
-                }
-                field("ETAX Status"; Rec."ETAX Status")
                 {
                     ApplicationArea = All;
                 }

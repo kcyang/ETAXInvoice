@@ -210,14 +210,14 @@ pageextension 50100 "Customer VAT Information" extends "Customer Card"
             action(AdditionalContacts)
             {
                 ApplicationArea = All;
-                CaptionML = ENU='Additional Contacts',KOR='부가세담당자';
+                CaptionML = ENU='Additional Contacts',KOR='추가 부가세담당자';
                 Image = ContactPerson;
                 Promoted = true;
                 PromotedIsBig = true;
                 RunObject = Page "VAT Contacts";
                 RunPageLink = "Account Type" = filter(Customer),
                               "No." = field("No.");
-                ToolTip = '추가 계산서 담당자를 입력합니다. 부가세 정보탭에서 2명까지는 바로 입력하시면 됩니다.';
+                ToolTip = '추가 계산서 담당자를 입력합니다. 부가세 정보탭에서 2명까지는 바로 입력하시면 됩니다. 5명까지 유효합니다.';
             }
         }
     }

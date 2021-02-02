@@ -199,6 +199,25 @@ page 50102 "VAT Sales Document"
                 UpdatePropagation = Both;
                 Enabled = groupEditable;
             }
+
+            group(Statement)
+            {
+                CaptionML = ENU = 'Statement', KOR = '전자명세관련';
+                Enabled = statementEditable;        
+                field("Statement Type";Rec."Statement Type")
+                {
+                    CaptionML = ENU = 'Statement Type', KOR = '명세서 유형';
+                    ApplicationArea = ALL;
+                    ToolTip = '명세서 유형을 선택합니다.';
+                }   
+                field("Statement Status";Rec."Statement Status")
+                {
+                    CaptionML = ENU = 'Statement Status', KOR = '명세서 발행상태';
+                    ApplicationArea = ALL;
+                    ToolTip = '명세서의 발행상태를 나타냅니다.';
+                    Enabled = false;
+                }     
+            }
         }
     }
     actions
@@ -256,14 +275,22 @@ page 50102 "VAT Sales Document"
             groupEditable := false
         else
             groupEditable := true;
+        
+        if (Rec."Statement Status" = Rec."Statement Status"::"Approval Pending") OR
+        (Rec."Statement Status" = Rec."Statement Status"::Issued) then
+            statementEditable := false
+        else
+            statementEditable := true;
 
     end;
 
     trigger OnInit()
     begin
-        groupEditable := true;        
+        groupEditable := true;     
+        statementEditable := true;   
     end;
 
     var
         groupEditable: Boolean;
+        statementEditable: Boolean;
 }

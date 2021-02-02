@@ -12,6 +12,7 @@ dotnet
 {
     assembly(Popbill)
     {
+        //전자세금계산서 발행관련 닷넷 인터페이스.
         type(Popbill.Taxinvoice.TaxinvoiceService; TaxinvoiceService) { }
         type(Popbill.Taxinvoice.Taxinvoice; Taxinvoice) { }
         type(Popbill.Taxinvoice.TaxinvoiceInfo; TaxinvoiceInfo) {}
@@ -22,6 +23,12 @@ dotnet
         type(Popbill.CorpInfo; CorpInfo) { }
         type(Popbill.Response; Response) { }
         type(Popbill.Taxinvoice.MgtKeyType; TaxIvnoiceMgtKeyType) { }
+
+        //전자명세서 관련 닷넷 인터페이스.
+        type(Popbill.Statement.StatementService; StatementService) {}
+        type(Popbill.Statement.Statement; Statement) {}
+        type(Popbill.Statement.StatementDetail; StatementDetail) {}
+        type(Popbill.Statement.StatementInfo; StatementInfo) {}
     }
     assembly(mscorlib)
     {
@@ -122,6 +129,51 @@ codeunit 50102 VATPopbillFunctions
         corpinfo := popbill.GetCorpInfo('7558800637', '');
         Message('대표자:%1 \\ 상호:%2 \\ 주소:%3', corpinfo.ceoname, corpinfo.corpName, corpinfo.addr);
     end;
+
+    procedure GetStatementInfo(var VATLedger: Record "VAT Ledger Entries")
+    var
+        popbill: DotNet StatementService;
+        statementinfo: DotNet StatementInfo;
+        skey: DotNet dstr;
+        linkid: DotNet dstr;
+        VATCompanyInformation: Record "VAT Company";
+        CorpRegID: Text;
+        statusCode: Integer;
+        Day: Integer;
+        Year: Integer;
+        Month: Integer;
+    begin
+        ClearAll();                
+
+        skey := 'D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=';
+        linkid := '2HC';
+        popbill := popbill.StatementService(linkid, skey);
+        popbill.IsTest := true;
+        popbill.IPRestrictOnOff := true;        
+
+        VATCompanyInformation.Reset();
+        if VATCompanyInformation.FindFirst() then begin
+            CorpRegID := DelChr(VATCompanyInformation."Corp RegID", '=', '-');
+        end else
+            Error('부가세 회사정보가 정의되지 않았습니다.\부가세회사를 먼저 정의하세요.');
+
+        //일단, 대상인 경우.
+        if (VATLedger."Statement Status" = VATLedger."Statement Status"::"Approval Pending") then
+        begin
+            statementinfo := popbill.GetInfo(CorpRegID,VATLedger."Statement Type".AsInteger(),VATLedger."VAT Document No.");
+            statusCode := statementinfo.stateCode;
+            if VATLedger."Statement Status".AsInteger() <> statusCode then
+            begin
+                VATLedger."Statement Status" := "Statement Status".FromInteger(statusCode);
+                VATLedger."Account Contact Confirm" := statementinfo.openYN;
+                Evaluate(Year,CopyStr(statementinfo.openDT,1,4));
+                Evaluate(Month,CopyStr(statementinfo.openDT,5,2));
+                Evaluate(Day,CopyStr(statementinfo.openDT,7,2));
+                VATLedger."Account Contact Confirm Date" := DMY2Date(Day,Month,Year);
+                VATLedger.Modify();
+            end;
+        end;
+    end;    
     procedure GetInfo(var VATLedger: Record "VAT Ledger Entries")
     var
         popbill: DotNet TaxinvoiceService;
@@ -209,7 +261,37 @@ codeunit 50102 VATPopbillFunctions
         //OPEN URL.
         Hyperlink(urlInfor);
     end;
-    
+
+    procedure GetStatementPopUpURL(VATDocumentNo:Text;statementType: Enum "Statement Type")
+    var
+        popbill: DotNet StatementService;
+        skey: DotNet dstr;
+        linkid: DotNet dstr;
+        urlInfor: Text;
+        VATCompanyInformation: Record "VAT Company";
+        CorpRegID: Text;
+    begin
+        Clear(skey);
+        Clear(linkid);
+        Clear(popbill);
+        Clear(urlInfor);
+        Clear(CorpRegID);
+        skey := 'D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=';
+        linkid := '2HC';
+        popbill := popbill.StatementService(linkid, skey);
+        popbill.IsTest := true;
+        popbill.IPRestrictOnOff := true;
+
+        VATCompanyInformation.Reset();
+        if VATCompanyInformation.FindFirst() then begin
+            CorpRegID := DelChr(VATCompanyInformation."Corp RegID", '=', '-');
+        end else
+            Error('부가세 회사정보가 정의되지 않았습니다.\부가세회사를 먼저 정의하세요.');
+
+        urlInfor := popbill.GetPopUpURL(CorpRegID,statementType.AsInteger(),VATDocumentNo,'');
+        //OPEN URL.
+        Hyperlink(urlInfor);    
+    end;    
     //세금계산서를 즉시발행.
     procedure RegistIssue(var VATLedger: Record "VAT Ledger Entries";Amended: boolean)
     var
@@ -648,10 +730,12 @@ codeunit 50102 VATPopbillFunctions
         //추가 담당자가 있을때만, 값을 입력함.
         if VATContacts.FindSet() then
         begin
+            SerialNum := 0;
             ListofContact := taxinvoice.GetTaxinvoiceAddContacts();
             repeat
+                SerialNum += 1;
                 taxinvoicecontact := taxinvoicecontact.TaxinvoiceAddContact();
-                taxinvoicecontact.serialNum := VATContacts."Line No.";
+                taxinvoicecontact.serialNum := SerialNum;
                 taxinvoicecontact.contactName := VATContacts."Contact Name";
                 taxinvoicecontact.email := VATContacts."Contact Email";
                 ListofContact.Add(taxinvoicecontact);
@@ -702,5 +786,231 @@ codeunit 50102 VATPopbillFunctions
         Message('전자세금 계산서가 발행요청되었습니다.!\상세 상태는 등록된 부가세문서에서 확인하세요.');
 
         //Message('응답코드:%1 \ 응답메시지 %2 \ 국세청승인번호 %3', response.code, response.message, response.ntsConfirmNum);
+    end;
+
+    //전자명세서를 즉시발행
+    procedure RegistStatementIssue(var VATLedger: Record "VAT Ledger Entries")
+    var
+        popbill: DotNet StatementService;
+        statement: DotNet Statement;
+        statementdetail: DotNet StatementDetail;
+        response: DotNet Response;
+        skey: DotNet dstr;
+        linkid: DotNet dstr;
+        ListofStatement: DotNet dlist;
+
+        VATCompanyInformation: Record "VAT Company";     
+        VATCategory: Record "VAT Category";    
+        detailedVATLedger: Record "detailed VAT Ledger Entries";       
+        CorpRegID: Text;
+        AccountRegID: Text;   
+        SerialNum: Integer;   
+        window: Dialog;
+        windowMessage: Text;          
+    begin
+        ClearAll();
+        //2H Consulting - Security Key & Linkid (변경할 일 없음.)
+        skey := 'D+sDN004PZoJb8v4B8/WKWLrqFV58mdx1U9T+fjuoxw=';
+        linkid := '2HC';
+
+        windowMessage := '명세서를 등록하고 전송중입니다...';
+        Window.Open(windowMessage);
+        //1. 넘어온 키/레코드에 대한 값 체크.
+        //2. 키/레코드에 대한 필요한 값 체크.     
+        VATCompanyInformation.Reset();
+        if VATCompanyInformation.Get(VATLedger."VAT Company Code") then begin
+            CorpRegID := DelChr(VATCompanyInformation."Corp RegID", '=', '-');
+            AccountRegID := DelChr(VATLedger."Account Reg. ID", '=', '-');
+        end else
+            Error('부가세 회사정보가 정의되지 않았습니다.\부가세회사를 먼저 정의하세요.');
+
+        //TODO 사업자등록번호 유효체크하는 기능추가 필요.
+        if (CorpRegID = '') then
+            Error('부가세 회사정보에 공급자 사업자번호가 정의되지 않았습니다.\공급자 사업자번호를 정의하세요.');
+
+        if (STRLEN(CorpRegID) <> 10) then
+            Error('부가세 회사정보에 공급자 사업자번호가 유효하지 않습니다.\공급자 사업자번호를 확인하세요.');
+
+        if (VATCompanyInformation."Corp Name" = '') then
+            Error('부가세 회사정보에 공급자 대표자 성명이 정의되지 않았습니다.\공급자 대표자 성명을 입력하세요.');
+
+        //FIXME 거래처의 사업자 번호가 없는 경우, Master 에서 다시 복사하고 유효성 검사를 할 것.!!!
+        if (AccountRegID = '') OR (StrLen(AccountRegID) <> 10) then
+            Error('공급받는자 또는 공급자의 사업자등록번호가 정의되지 않거나, 유효하지 않습니다.\거래처의 사업자번호를 확인하세요.');
+
+        if (VATLedger."Account Name" = '') then
+            Error('공급받는자 또는 공급자의 상호가 정의되지 않았습니다.\거래처의 상호를 확인하세요.');
+
+        if (VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt) AND (VATLedger."VAT Document No." = '') then
+            Error('부가세 번호가 누락되었습니다.\부가세 번호를 확인하세요.');
+
+        if (VATLedger."Account CEO Name" = '') then
+            Error('공급받는자 대표자 성명이 정의되지 않았습니다.\거래처의 대표자 성명을 입력하세요.');
+
+        if (VATLedger."Account Contact Email" = '') then
+            Error('공급받는자의 이메일 주소가 입력되지 않았습니다.\거래처 담당자에게 이메일이 발송되지 않습니다.\거래처의 담당자 이메일 주소를 확인하세요.');
+
+        if (VATLedger."Actual Amount" = 0) then
+            Error('공급가액이 0원입니다. \전자세금계산서 발행을 진행할 수 없습니다.');     
+
+        VATCategory.Reset();
+        if VATCategory.get(VATLedger."VAT Category Code") then begin
+            if VATCategory.Use = false then
+                Error('사용하지 않는 부가세카테고리로 지정되었습니다.\문서의 부가세카테고리를 확인하세요.');
+
+            if VATCategory.Taxation = true then
+                if VATLedger."Tax Amount" = 0 then
+                    Error('과세 유형의 계산서이나 세액이 0원입니다.\세액을 확인하세요.');
+        end;
+        //3. 필요한 값 셋업.
+
+        // 세금계산서 서비스 객체 초기화                                  
+        popbill := popbill.StatementService(linkid,skey);
+        // 연동환경 설정값, 개발용(true), 상업용(false)
+        popbill.IsTest := true;
+        // 발급된 토큰에 대한 IP 제한기능 사용여부, 권장(true)
+        popbill.IPRestrictOnOff := true;
+        // 로컬PC 시간 사용 여부 true(사용), false(기본값) - 미사용
+        popbill.UseLocalTimeYN := false;
+        // 전자명세서 객체
+        statement := statement.Statement();
+        // [필수], 기재상 작성일자 날짜형식(yyyyMMdd)
+        statement.writeDate := Format(VATLedger."VAT Date", 0, '<Year4><Month,2><Day,2>');
+        // [필수], {영수, 청구} 중 기재
+        if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt then begin
+            statement.purposeType := '영수';
+        end else begin
+            statement.purposeType := '청구';
+        end;
+
+        // [필수] 과세형태, {과세, 영세, 면세} 중 기재
+        if VATCategory.Get(VATLedger."VAT Category Code") then begin
+            if VATCategory.ZeroTax = true then
+                statement.taxType := '영세'
+            else
+                if VATCategory.Taxation = true then
+                    statement.taxType := '과세'
+                else
+                    statement.taxType := '면세';
+        end;        
+        // 맞춤양식코드, 기본값을 공백('')으로 처리하면 기본양식으로 처리.
+        statement.formCode := '';
+        // [필수] 전자명세서 양식코드
+        statement.itemCode := VATLedger."Statement Type".AsInteger();
+        // [필수] 문서번호, 1~24자리 숫자, 영문, '-', '_' 조합으로 사업자별로 중복되지 않도록 구성
+        statement.mgtKey := VATLedger."VAT Document No.";
+        /**************************************************************************
+        *                          발신자 정보                                   *
+        **************************************************************************/        
+        // [필수] 발신자 사업자번호
+        statement.senderCorpNum := CorpRegID;
+        // 종사업자 식별번호. 필요시 기재. 형식은 숫자 4자리.
+        statement.senderTaxRegID := '';
+        // 발신자 상호
+        statement.senderCorpName := VATCompanyInformation."Corp Name";
+        // 발신자 대표자 성명
+        statement.senderCEOName := VATCompanyInformation."CEO Name";
+        // 발신자 주소
+        statement.senderAddr := VATCompanyInformation."Corp Addr";
+        // 발신자 종목
+        statement.senderBizClass := VATCompanyInformation."Corp BizClass";
+        // 발신자 업태
+        statement.senderBizType := VATCompanyInformation."Corp BizType";
+        // 발신자 담당자 성명
+        statement.senderContactName := VATCompanyInformation."Contact Name";
+        // 발신자 메일주소
+        statement.senderEmail := VATCompanyInformation."Contact Email";
+        // 발신자 연락처
+        statement.senderTEL := VATCompanyInformation."Contact TEL";
+        // 발신자 휴대폰번호
+        statement.senderHP := VATCompanyInformation."Contact HP"; 
+        /**************************************************************************
+        *                             수신자 정보                                *
+        **************************************************************************/
+        // 수신자 사업자번호
+        statement.receiverCorpNum := AccountRegID;
+        // [필수] 수신자 상호
+        statement.receiverCorpName := VATLedger."Account Name";
+        // 수신자 대표자 성명
+        statement.receiverCEOName := VATLedger."Account CEO Name";
+        // 수신자 주소
+        statement.receiverAddr := VATLedger."Account Address";
+        // 수신자 종목
+        statement.receiverBizClass := VATLedger."Account Biz Class";
+        // 수신자 업태
+        statement.receiverBizType := VATLedger."Account Biz Type";
+        // 수신자 담당자 성명
+        statement.receiverContactName := VATLedger."Account Contact Name";
+        // 수신자 메일주소
+        // 팝빌 개발환경에서 테스트하는 경우에도 안내 메일이 전송되므로,
+        // 실제 거래처의 메일주소가 기재되지 않도록 주의
+        statement.receiverEmail := VATLedger."Account Contact Email";
+        //**********************************************/
+        //테스트할 때에는 Fix.
+        statement.receiverEmail := 'kc.yang@2hc.co.kr';
+        //**********************************************/        
+        /**************************************************************************
+        *                         전자명세서 기재항목                            *
+        **************************************************************************/
+        // [필수] 공급가액 합계
+        statement.supplyCostTotal := Format(VATLedger."Actual Amount");
+        // [필수] 세액 합계
+        statement.taxTotal := Format(VATLedger."Tax Amount");
+        // 합계금액
+        statement.totalAmount := Format(VATLedger."Total Amount");
+        // 기재상 일련번호 항목
+        statement.serialNum := '1';
+        // 기재상 비고 항목
+        statement.remark1 := VATLedger."ETAX Remark1";
+        statement.remark2 := VATLedger."ETAX Remark2";
+        statement.remark3 := VATLedger."ETAX Remark3";
+        // 사업자등록증 이미지 첨부여부
+        statement.businessLicenseYN := false;
+        // 통장사본 이미지 첨부여부
+        statement.bankBookYN := false;
+
+        detailedVATLedger.Reset();
+        detailedVATLedger.SetRange("VAT Document No.", VATLedger."VAT Document No.");
+        SerialNum := 0;
+        if detailedVATLedger.FindSet() then begin
+            ListofStatement := statement.GetStatementDetails(); //List<StatementDetail> 을 가져오는 구문.            
+            repeat
+                SerialNum += 1;
+                statementdetail := statementdetail.StatementDetail();
+                statementdetail.serialNum := SerialNum;
+                statementdetail.purchaseDT := Format(VATLedger."VAT Date", 0, '<Year4><Month,2><Day,2>');
+                statementdetail.itemName := detailedVATLedger."Item Description";
+                statementdetail.spec := detailedVATLedger.Spec;
+                statementdetail.qty := Format(detailedVATLedger.Quantity);
+                statementdetail.unitCost := Format(detailedVATLedger."Unit price");
+                statementdetail.supplyCost := Format(detailedVATLedger."Actual Amount");
+                statementdetail.tax := Format(detailedVATLedger."Tax Amount");
+                statementdetail.remark := detailedVATLedger.Remark;
+                statementdetail.spare1 := ''; //1~10까지 있음.
+                ListofStatement.Add(statementdetail); //Detail List 집어넣기.
+            until detailedVATLedger.Next() = 0;
+            statement.detailList := ListofStatement; //SET List<StatementDetail>...            
+        end;    
+/*// 추가속성항목, 자세한사항은 "전자명세서 API 연동매뉴얼> 5.2 기본양식 추가속성 테이블" 참조.
+        statement.propertyBag := statement.propertyBag.propertyBag();
+        statement.propertyBag.Add('Balance','');  //거래처전잔액 입력
+        statement.propertyBag.Add('Deposit','');  //거래처입금 입력
+        statement.propertyBag.Add('CBalance',''); //거래처잔액
+*/        
+        response := popbill.RegistIssue(CorpRegID,statement,'','');
+
+        VATLedger."Statement Issue Date" := Today; //날짜를 입력함.
+        VATLedger."Statement Status" := "Statement Status"::"Approval Pending"; //승인대기.
+        VATLedger.Statement := true; //명세서가 발행되면, 체크표시
+        VATLedger.Modify();
+
+        window.Close();
+        Message('전자명세서가 발행요청되었습니다.!');        
+    end;
+
+    //전자명세서를 발행취소요청
+    procedure CancelStatementIssue(var VATLedger: Record "VAT Ledger Entries")
+    begin
+
     end;
 }

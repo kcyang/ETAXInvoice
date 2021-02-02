@@ -449,9 +449,9 @@ table 50102 "VAT Ledger Entries"
             CaptionML = ENU='ETAX Issuer',KOR='전자세금계산서 전송 ID';
             DataClassification = CustomerContent;
         }
-        field(80; "ETAX Status"; Code[20])
+        field(80; "Statement Status"; Enum "Statement Status")
         {
-            CaptionML = ENU='ETAX Status',KOR='전자 세금계산서 상태';
+            CaptionML = ENU='Statement Status',KOR='전자 명세서 상태';
             DataClassification = CustomerContent;
         }
         field(81; "ETAX Issue Date"; Date)
@@ -459,24 +459,24 @@ table 50102 "VAT Ledger Entries"
             CaptionML = ENU='ETAX Issue Date',KOR='국세청 전송일자';
             DataClassification = CustomerContent;
         }
-        field(82; "ETAX Sending Status"; Enum "ETAX Sending Status")
+        field(82; "Statement Issue Date"; Date)
         {
-            CaptionML = ENU='ETAX Sending Status',KOR='국세청 전송상태';
+            CaptionML = ENU='Statement Issue Date',KOR='전자명세서 전송일자';
             DataClassification = CustomerContent;
         }
-        field(83; "ETAX Detailed Res. Msg"; Text[250])
+        field(83; "Statement Type"; Enum "Statement Type")
         {
-            CaptionML = ENU='ETAX Detailed Res. Msg',KOR='응답메세지 상세';
+            CaptionML = ENU='Statement Type',KOR='명세서 유형';
             DataClassification = CustomerContent;
         }
         field(84; "Account Contact Confirm"; Boolean)
         {
-            CaptionML = ENU='Account Contact Confirm',KOR='청구처 담당자 확인 여부';
+            CaptionML = ENU='Account Contact Confirm',KOR='거래처 담당자 확인 여부';
             DataClassification = CustomerContent;
         }
         field(85; "Account Contact Confirm Date"; Date)
         {
-            CaptionML = ENU='Account Contact Confirm Date',KOR='청구처 담당자 확인 일자';
+            CaptionML = ENU='Account Contact Confirm Date',KOR='거래처 담당자 확인 일자';
             DataClassification = CustomerContent;
         }
         field(86; "Account No."; code[20])
@@ -537,6 +537,11 @@ table 50102 "VAT Ledger Entries"
         {
             CaptionML = ENU='Before Document No.',KOR='수정대상 문서번호';
             DataClassification = CustomerContent;                        
+        }
+        field(90;"Statement";Boolean)
+        {
+            CaptionML = ENU='Statement',KOR='전자명세서';
+            DataClassification = CustomerContent;                 
         }
     }
     keys
