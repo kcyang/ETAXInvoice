@@ -369,9 +369,6 @@ codeunit 50102 VATPopbillFunctions
         if (VATLedger."Account Name" = '') then
             Error('공급받는자 또는 공급자의 상호가 정의되지 않았습니다.\거래처의 상호를 확인하세요.');
 
-        if (VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt) AND (VATLedger."VAT Document No." = '') then
-            Error('부가세 번호가 누락되었습니다.\부가세 번호를 확인하세요.');
-
         if (VATLedger."Account CEO Name" = '') then
             Error('공급받는자 대표자 성명이 정의되지 않았습니다.\거래처의 대표자 성명을 입력하세요.');
 
@@ -426,13 +423,16 @@ codeunit 50102 VATPopbillFunctions
         // [필수] {영수, 청구} 중 기재
         // 위수탁발행은 대상에 넣지 않음.
         // 영수인 경우, 역발행.
-        if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt then begin
+        if VATLedger."VAT Issue Type" = VATLedger."VAT Issue Type"::Purchase then begin
             taxinvoice.issueType := '역발행';
-            taxinvoice.purposeType := '영수';
         end else begin
-            taxinvoice.issueType := '정발행'; //청구는 정발행.
-            taxinvoice.purposeType := '청구';
+            taxinvoice.issueType := '정발행'; //매출은 정발행
         end;
+        
+        if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Claim then
+            taxinvoice.purposeType := '청구'
+        else if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt then
+            taxinvoice.purposeType := '영수';
 
         // [필수] 과세형태, {과세, 영세, 면세} 중 기재
         if VATCategory.Get(VATLedger."VAT Category Code") then begin
@@ -446,7 +446,7 @@ codeunit 50102 VATPopbillFunctions
         end;
 
         //청구일때, 공급자(VAT Company Information) 공급받는자(Account/Customer)
-        if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Claim then begin
+        if VATLedger."VAT Issue Type" = VATLedger."VAT Issue Type"::Sales then begin
             /*****************************************************************
             *                         공급자 정보                             *
             * 청구유형, 매출청구 / VAT Company Information             *
@@ -559,9 +559,9 @@ codeunit 50102 VATPopbillFunctions
             // 역발행시 알림문자 전송여부 
             taxinvoice.invoiceeSMSSendYN := false;
         end
-        //영수일때, 공급자(Account/Vendor) 공급받는자(VAT Company Information)
+        //매입일때, 공급자(Account/Vendor) 공급받는자(VAT Company Information)
         else
-            if VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt then begin
+            if VATLedger."VAT Issue Type" = VATLedger."VAT Issue Type"::Purchase then begin
                 Error('현재는, 매입계산서(역발행)에 대한 계산서 발행은 구현되지 않았습니다.\팝빌사이트에서 매입(역발행)을 등록하세요.');
                 /*****************************************************************
                 *                         공급자 정보                             *
@@ -840,9 +840,6 @@ codeunit 50102 VATPopbillFunctions
 
         if (VATLedger."Account Name" = '') then
             Error('공급받는자 또는 공급자의 상호가 정의되지 않았습니다.\거래처의 상호를 확인하세요.');
-
-        if (VATLedger."VAT Claim Type" = VATLedger."VAT Claim Type"::Receipt) AND (VATLedger."VAT Document No." = '') then
-            Error('부가세 번호가 누락되었습니다.\부가세 번호를 확인하세요.');
 
         if (VATLedger."Account CEO Name" = '') then
             Error('공급받는자 대표자 성명이 정의되지 않았습니다.\거래처의 대표자 성명을 입력하세요.');

@@ -69,6 +69,18 @@ page 50102 "VAT Sales Document"
                         }
                     }
 
+                    group(DocumentType)
+                    {
+                        CaptionML = ENU='Document Type', KOR='문서유형';
+                        field("VAT Claim Type";Rec."VAT Claim Type")
+                        {
+                            CaptionML = ENU = 'Claim Type', KOR = '청구유형';
+                            ApplicationArea = ALL;
+                            Importance = Promoted;
+                            ToolTip = '계산서 청구유형입니다.';
+                        }
+                    }
+
                 }
             }
             /*

@@ -30,16 +30,6 @@ table 50102 "VAT Ledger Entries"
         {
             CaptionML = ENU='VAT Issue Type',KOR='매출입 구분';
             DataClassification = CustomerContent;
-            //매출인경우 청구, 매입인 경우 영수를 자동으로 입력하도록 한다.
-            trigger OnValidate()
-            begin
-                if "VAT Issue Type" = "VAT Issue Type"::Sales then
-                    "VAT Claim Type" := "VAT Claim Type"::Claim
-                else if "VAT Issue Type" = "VAT Issue Type"::Purchase then
-                    "VAT Claim Type" := "VAT Claim Type"::Receipt
-                else
-                    "VAT Claim Type" := "VAT Claim Type"::None;
-            end;
         }
         field(5; "VAT Date"; Date)
         {
