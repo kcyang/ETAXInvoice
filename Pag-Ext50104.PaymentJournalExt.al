@@ -1,4 +1,4 @@
-pageextension 50103 CashReceiptJournalExt extends "Cash Receipt Journal"
+pageextension 50104 "Payment Journal Ext" extends "Payment Journal"
 {
     actions
     {
@@ -31,7 +31,7 @@ pageextension 50103 CashReceiptJournalExt extends "Cash Receipt Journal"
                         (Rec."Account Type" = Rec."Account Type"::Vendor) then 
                         begin
                             VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Purchase); //매출/청구
-                        end else if (Rec."Gen. Posting Type" = Rec."Gen. Posting Type"::Sale) OR 
+                        end else if (Rec."Gen. Posting Type" = Rec."Gen. Posting Type"::Sale) OR
                         (Rec."Account Type" = Rec."Account Type"::Customer) then 
                         begin
                             VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Sales); //매출/청구
@@ -88,5 +88,5 @@ pageextension 50103 CashReceiptJournalExt extends "Cash Receipt Journal"
             }
         }
 
-    }    
+    }        
 }

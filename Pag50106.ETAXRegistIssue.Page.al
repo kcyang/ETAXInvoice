@@ -323,18 +323,42 @@ page 50106 "ETAX Regist Issue"
                     popbill: Codeunit VATPopbillFunctions;
                 begin
                     //1. 계산서 발행 대상인지 체크.
-                    /*
-                    if Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued then
-                        Error('전자 명세서 발행이 완료된 건에 대해서 취소를 할 수 있습니다.\문서를 확인하세요.');
+                    if Rec.Statement = false then
+                        Error('명세서가 발행된 건이 아닙니다.\문서를 확인하세요.');        
+                    if (Rec."Statement Status" = Rec."Statement Status"::Canceled) then
+                        Error('전자 명세서가 이미 삭제된 건입니다.\문서를 확인하세요.');
+                    //2. 명세서 발행.
+                    popbill.CancelStatementIssue(Rec);
+                end;  
+            }                   
+            action(DeleteStatementIssue)
+            {
+                CaptionML = ENU='Delete Statement Issue',KOR='전자명세서 삭제';
+                Image = VoidAllElectronicDocuments;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;              
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    //1. 계산서 발행 대상인지 체크.
+                    if Rec.Statement = false then
+                        Error('명세서가 발행된 건이 아닙니다.\문서를 확인하세요.');
+
+                    if (Rec."Statement Status" <> Rec."Statement Status"::"Issue Canceled") AND
+                    (Rec."Statement Status" <> Rec."Statement Status"::Rejected) AND
+                    (Rec."Statement Status" <> Rec."Statement Status"::Saved) then
+                        Error('전자 명세서 상태가 발행취소,승인거부,임시저장 인 건에 대해서 삭제 할 수 있습니다.\문서를 확인하세요.');
+
                     if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
                     (Rec."ETAX Before Document No." <> '') then
                         Error('이 문서는 수정세금계산서 문서입니다.\문서열기를 통해 계산서를 발행하세요.');
-                    */
-                    //2. 명세서 발행.
-                    //popbill.RegistIssue(Rec,false);
-                    Message('개발중!!!');
+                    
+                    //2. 명세서 삭제.
+                    popbill.DeleteStatementIssue(Rec);
                 end;  
-            }                   
+            }                
             action(AmendedRegistIssue)
             {
                 CaptionML = ENU='Amended Tax Invoice Issue',KOR='수정세금계산서 작성';
@@ -352,7 +376,8 @@ page 50106 "ETAX Regist Issue"
                     //1. 계산서 발행 대상인지 체크.
                     if Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued then
                         Error('수정세금계산서는 이미 발행 완료된 건에 대해 진행하실 수 있습니다.\문서를 확인하세요.');
-                        
+                    if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Purchase then
+                        Error('역발행(매입)계산서는 역발행 요청취소를 통해 처리하시기 바랍니다.'); 
                     //FIXME 수정세금계산서를 또 수정할 수 있음. 안되는 경우를 제외하고 진행할 수 있도록 수정해야 함.    
                     if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
                     (Rec."ETAX Before Document No." <> '') then
@@ -395,6 +420,58 @@ page 50106 "ETAX Regist Issue"
                     end;                        
                 end;  
             }        
+            action(CancelRegistIssue)
+            {
+                CaptionML = ENU='Cancel Purchase Issue',KOR='역발행(매입)문서 발행취소';
+                Image = CancelApprovalRequest;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;              
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    //1. 계산서 발행 대상인지 체크.
+                    if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
+                        Error('역발행취소 요청은, 매입(역발행)문서에 대해서 요청이 가능합니다.');
+
+                    if (Rec."ETAX Document Status" <> Rec."ETAX Document Status"::Issued) then
+                        Error('역발행요청된 문서에 대해서만 취소요청을 하실 수 있습니다.\문서를 확인하세요.');
+
+                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
+                    (Rec."ETAX Before Document No." <> '') then
+                        Error('이 문서는 수정세금계산서 문서입니다.\문서를 확인하세요.');
+                    
+                    //2. 명세서 삭제.
+                    popbill.CancelPurchaseIssue(Rec);
+                end;  
+            }                
+            action(DeleteRegistIssue)
+            {
+                CaptionML = ENU='Delete Purchase Issue',KOR='역발행(매입)문서 삭제요청';
+                Image = DeleteQtyToHandle;
+                Promoted = true;
+                PromotedIsBig = true;
+                ApplicationArea = ALL;              
+                trigger OnAction()
+                var
+                    popbill: Codeunit VATPopbillFunctions;
+                begin
+                    //1. 계산서 발행 대상인지 체크.
+                    if Rec."VAT Issue Type" = Rec."VAT Issue Type"::Sales then
+                        Error('역발행삭제 요청은, 매입(역발행)문서에 대해서 요청이 가능합니다.');
+
+                    if (Rec."ETAX Status Code" <> Rec."ETAX Status Code"::"Issue Canceled") then
+                        Error('역발행취소된 문서에 대해서만 삭제요청을 하실 수 있습니다.\먼저 취소요청을 진행하세요.');
+
+                    if (Rec."VAT Document Type" = Rec."VAT Document Type"::Correction) AND
+                    (Rec."ETAX Before Document No." <> '') then
+                        Error('이 문서는 수정세금계산서 문서입니다.\문서를 확인하세요.');
+                    
+                    //2. 명세서 삭제.
+                    popbill.DeletePurchaseIssue(Rec);
+                end;  
+            }                
             action(Reload)
             {
                 CaptionML = ENU='Reload',KOR='화면새로고침';
@@ -421,7 +498,8 @@ page 50106 "ETAX Regist Issue"
         end else
             StyleYN := false;
         
-        if (Rec."Statement Status" = Rec."Statement Status"::"Approval Pending") AND
+        if ((Rec."Statement Status" = Rec."Statement Status"::"Approval Pending") OR 
+        (Rec."Statement Status" = Rec."Statement Status"::"Cancellation Request")) AND
         (Rec.Statement = true) then
         begin
             popbill.GetStatementInfo(Rec);

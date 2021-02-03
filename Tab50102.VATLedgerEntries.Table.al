@@ -1,6 +1,5 @@
 /*
 부가세 기장.
-TODO 송장에서 입력시, 라인의 내용을 합쳐서, Description 외 x 건. 수량은 1, 단가는 공급가, 공급가,세액 자동입력.
 */
 table 50102 "VAT Ledger Entries"
 {

@@ -26,5 +26,9 @@ enum 50117 "Statement Status"
     {
         CaptionML = ENU='Issue Canceled',KOR='발행취소';
     }
+    value(900; "Cancellation Request")
+    {
+        CaptionML = ENU='Cancellation Request',KOR='발행취소요청';
+    }    
     
 }

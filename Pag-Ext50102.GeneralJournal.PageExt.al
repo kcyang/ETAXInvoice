@@ -6,7 +6,7 @@ pageextension 50102 "General Journal" extends "General Journal"
         {
             action(TaxRegistration)
             {
-                CaptionML = ENU='Tax Registration',KOR='부가세등록';
+                CaptionML = ENU='Tax Registration',KOR='계산서/부가세등록';
                 Image = VATExemptionEntries;
                 Promoted = true;
                 PromotedIsBig = true;
@@ -25,9 +25,11 @@ pageextension 50102 "General Journal" extends "General Journal"
                     end else begin
                         VATLedgerEntreis.Init();
                         VATLedgerEntreis.Insert(true);
-                        if Rec."Gen. Posting Type" = Rec."Gen. Posting Type"::Purchase then begin
+                        if (Rec."Gen. Posting Type" = Rec."Gen. Posting Type"::Purchase) OR 
+                        (Rec."Account Type" = Rec."Account Type"::Vendor) then begin
                             VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Purchase); //매출/청구
-                        end else if Rec."Gen. Posting Type" = Rec."Gen. Posting Type"::Sale then begin
+                        end else if (Rec."Gen. Posting Type" = Rec."Gen. Posting Type"::Sale) OR 
+                        (Rec."Account Type" = Rec."Account Type"::Customer) then begin
                             VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Sales); //매출/청구
                         end else begin
                         end;

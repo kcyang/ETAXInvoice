@@ -1,8 +1,5 @@
 /*
 부가세 매출 입력.
-TODO 공급가액/세액 부분은 FixedGrid 로 진행할 것.
-https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-arrange-fields-in-rows-and-columns-using-fixedlayout-control
-위 링크 참조.
 */
 page 50102 "VAT Sales Document"
 {
