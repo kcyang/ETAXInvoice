@@ -86,7 +86,20 @@ page 50100 "VAT Company Information"
                     ApplicationArea = All;
                 }
 
-            }                
+            }       
+
+            group(ETAX)
+            {
+                CaptionML = ENU = 'ETAX', KOR='전자세금계산서/명세서 관련';
+                field(Abbreviates;Rec.Abbreviates)
+                {
+                    ApplicationArea = All;
+                }
+                field("Include Comments";Rec."Include Comments")
+                {
+                    ApplicationArea = All;                    
+                }
+            }         
         }
     } 
 }

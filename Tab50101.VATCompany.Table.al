@@ -90,6 +90,18 @@ table 50101 "VAT Company"
             CaptionML = ENU='Contact Email',KOR='주담당자 이메일';
             DataClassification = CustomerContent;
         }
+#region 계산서발행관련 설정-현재는 사용안함.        
+        field(17; Abbreviates; Boolean)
+        {
+            CaptionML = ENU='Abbreviates',KOR='계산서/명세서 항목 축약 발행여부';
+            DataClassification = CustomerContent;
+        }
+        field(18; "Include Comments"; Boolean)
+        {
+            CaptionML = ENU='Include Comments',KOR='계산서/명세서 주석포함 발행여부';
+            DataClassification = CustomerContent;
+        }
+#endregion        
     }
     keys
     {

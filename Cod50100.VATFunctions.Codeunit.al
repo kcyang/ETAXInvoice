@@ -143,7 +143,8 @@ codeunit 50100 "VAT Functions"
       CASE SalesDocumentType of
         SalesDocumentType::Order,SalesDocumentType::Invoice:
         begin
-          ///... 외 ..건 Description 을 위해 Sales Line 뒤지기.
+#region - 라인축약을 위한 구분.          
+          //... 외 ..건 Description 을 위해 Sales Line 뒤지기.
           SalesLines.Reset();
           SalesLines.SetRange("Document No.",SalesHeader."No.");
           SalesLines.SetFilter(Type,'%1..%2',SalesLines.Type::"G/L Account",SalesLines.Type::"Fixed Asset");
@@ -156,6 +157,7 @@ codeunit 50100 "VAT Functions"
           until SalesLines.Next() = 0; 
           end;
           SalesLineDescription += StrSubstNo('외 %1건',SalesLineCnt);          
+#endregion
           VATLedgerEntreis.Init();
           VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
           VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Sales); //매출/청구
@@ -170,6 +172,7 @@ codeunit 50100 "VAT Functions"
           VATLedgerEntreis.Modify();
 
           SalesHeader.CalcFields(Amount,"Amount Including VAT");
+#region - 디테일라인 입력구간
           detailedVATLedgerEntreis.Init();
           detailedVATLedgerEntreis."VAT Document Date" := SalesHeader."Posting Date";
           detailedVATLedgerEntreis."VAT Document No." := VATLedgerEntreis."VAT Document No.";
@@ -181,10 +184,12 @@ codeunit 50100 "VAT Functions"
           detailedVATLedgerEntreis.Quantity := 1;
           detailedVATLedgerEntreis."Item Description" := SalesLineDescription;
           detailedVATLedgerEntreis.Insert(true);          
+#endregion
         end;
         SalesDocumentType::"Credit Memo",SalesDocumentType::"Return Order":
         begin
-          ///... 외 ..건 Description 을 위해 Sales Line 뒤지기.
+#region - 라인축약을 위한 구분.          
+          //... 외 ..건 Description 을 위해 Sales Line 뒤지기.
           SalesCrLines.Reset();
           SalesCrLines.SetRange("Document No.",SalesCrMemo."No.");
           SalesCrLines.SetFilter(Type,'%1..%2',SalesCrLines.Type::"G/L Account",SalesCrLines.Type::"Fixed Asset");
@@ -197,6 +202,7 @@ codeunit 50100 "VAT Functions"
           until SalesCrLines.Next() = 0; 
           end;
           SalesLineDescription += StrSubstNo('외 %1건',SalesLineCnt);
+#endregion
           VATLedgerEntreis.Init();
           VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
           VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Sales); //매출/청구
@@ -211,6 +217,7 @@ codeunit 50100 "VAT Functions"
           VATLedgerEntreis.Modify();
 
           SalesCrMemo.CalcFields(Amount,"Amount Including VAT");
+#region - 디테일라인 입력구간
           detailedVATLedgerEntreis.Init();
           detailedVATLedgerEntreis."VAT Document Date" := SalesCrMemo."Posting Date";
           detailedVATLedgerEntreis."VAT Document No." := VATLedgerEntreis."VAT Document No.";
@@ -222,6 +229,7 @@ codeunit 50100 "VAT Functions"
           detailedVATLedgerEntreis.Quantity := 1;
           detailedVATLedgerEntreis."Item Description" := SalesLineDescription;
           detailedVATLedgerEntreis.Insert(true);               
+#endregion          
         end; 
         else;
       END;
