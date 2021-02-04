@@ -37,10 +37,18 @@ page 50104 "VAT Sales Listpart"
                 field(Quantity; Rec.Quantity)
                 {
                     ApplicationArea = All;
+                    trigger OnValidate()
+                    begin
+                        CurrPage.Update();
+                    end;                    
                 }
                 field("Unit price"; Rec."Unit price")
                 {
                     ApplicationArea = All;
+                    trigger OnValidate()
+                    begin
+                        CurrPage.Update();
+                    end;                    
                 }
                 field("Actual Amount"; Rec."Actual Amount")
                 {

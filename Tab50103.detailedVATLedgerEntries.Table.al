@@ -40,11 +40,19 @@ table 50103 "detailed VAT Ledger Entries"
         {
             CaptionML = ENU = 'Quantity', KOR = '수량';
             DataClassification = CustomerContent;
+            trigger OnValidate()
+            begin
+                UpdateUnitAmount();
+            end;
         }
         field(8; "Unit price"; Decimal)
         {
             CaptionML = ENU = 'Unit price', KOR = '단가';
             DataClassification = CustomerContent;
+            trigger OnValidate()
+            begin
+                UpdateUnitAmount();
+            end;            
         }
         field(9; "Actual Amount"; Decimal)
         {
@@ -100,5 +108,10 @@ table 50103 "detailed VAT Ledger Entries"
             "Tax Amount" := 0;
         "Line Total Amount" := "Actual Amount" + "Tax Amount";
         Modify();
+    end;
+
+    local procedure UpdateUnitAmount()
+    begin
+        Validate("Actual Amount","Unit price"*Quantity);
     end;
 }
