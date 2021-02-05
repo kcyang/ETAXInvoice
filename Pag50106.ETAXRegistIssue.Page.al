@@ -300,6 +300,8 @@ page 50106 "ETAX Regist Issue"
                 var
                     popbill: Codeunit VATPopbillFunctions;
                 begin
+                    if Rec."Statement Type".AsInteger() = 0 then
+                        Error('전자명세서 유형을 먼저 정의하고 발행하세요.');
                     //1. 계산서 발행 대상인지 체크.
                     if (Rec."Statement Status" = Rec."Statement Status"::"Approval Pending") OR 
                     (Rec."Statement Status" = Rec."Statement Status"::Issued) then
@@ -493,7 +495,14 @@ page 50106 "ETAX Regist Issue"
     begin
         if Rec."ETAX Document Status" = Rec."ETAX Document Status"::Issued then
         begin
-            popbill.GetInfo(Rec);
+            if (Rec."ETAX Status Code" = Rec."ETAX Status Code"::"Await Sending") OR
+            (Rec."ETAX Status Code" = Rec."ETAX Status Code"::Awaiting) OR
+            (Rec."ETAX Status Code" = Rec."ETAX Status Code"::"Before Sending") OR
+            (Rec."ETAX Status Code" = Rec."ETAX Status Code"::"Issue Registered") OR
+            (Rec."ETAX Status Code" = Rec."ETAX Status Code"::"Issue Canceled") OR
+            (Rec."ETAX Status Code" = Rec."ETAX Status Code"::Sending) OR
+            (Rec."ETAX Status Code" = Rec."ETAX Status Code"::"Temporary Save") then
+                popbill.GetInfo(Rec);
             StyleYN := true;
         end else
             StyleYN := false;

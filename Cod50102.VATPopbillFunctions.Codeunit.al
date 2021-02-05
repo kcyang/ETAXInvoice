@@ -313,6 +313,7 @@ codeunit 50102 VATPopbillFunctions
         SerialNum: Integer;
         window: Dialog;
         windowMessage: Text;
+        detailCount: Integer;
     begin
         //0. dotnet initialize
         Clear(skey);
@@ -698,20 +699,38 @@ codeunit 50102 VATPopbillFunctions
         SerialNum := 0;
         if detailedVATLedger.FindSet() then begin
             ListofTax := taxinvoice.GetTaxinvoiceDetails(); //List<TaxinvoiceDetail> 을 가져오는 구문.            
-            repeat
-                SerialNum += 1;
+            //계산서 축약인 경우, 목록이 1개 이상이면,
+            detailCount := detailedVATLedger.Count;
+            if (VATCompanyInformation."Invoice Abbreviates" = true) AND
+            (detailCount > 1) then
+            begin
                 taxinvoicedetail := taxinvoicedetail.TaxinvoiceDetail();
-                taxinvoicedetail.serialNum := SerialNum;
+                taxinvoicedetail.serialNum := 1;
                 taxinvoicedetail.purchaseDT := Format(VATLedger."VAT Date", 0, '<Year4><Month,2><Day,2>');
-                taxinvoicedetail.itemName := detailedVATLedger."Item Description";
+                taxinvoicedetail.itemName := detailedVATLedger."Item Description"+' 외 '+Format(detailCount)+'건';
                 taxinvoicedetail.spec := detailedVATLedger.Spec;
-                taxinvoicedetail.qty := Format(detailedVATLedger.Quantity);
-                taxinvoicedetail.unitCost := Format(detailedVATLedger."Unit price");
-                taxinvoicedetail.supplyCost := Format(detailedVATLedger."Actual Amount");
-                taxinvoicedetail.tax := Format(detailedVATLedger."Tax Amount");
-                taxinvoicedetail.remark := detailedVATLedger.Remark;
+                taxinvoicedetail.qty := '1';
+                taxinvoicedetail.unitCost := '0';
+                taxinvoicedetail.supplyCost := Format(VATLedger."Actual Amount");
+                taxinvoicedetail.tax := Format(VATLedger."Tax Amount");
                 ListofTax.Add(taxinvoicedetail); //Detail List 집어넣기.
-            until detailedVATLedger.Next() = 0;
+            end else 
+            begin
+                repeat
+                    SerialNum += 1;
+                    taxinvoicedetail := taxinvoicedetail.TaxinvoiceDetail();
+                    taxinvoicedetail.serialNum := SerialNum;
+                    taxinvoicedetail.purchaseDT := Format(VATLedger."VAT Date", 0, '<Year4><Month,2><Day,2>');
+                    taxinvoicedetail.itemName := detailedVATLedger."Item Description";
+                    taxinvoicedetail.spec := detailedVATLedger.Spec;
+                    taxinvoicedetail.qty := Format(detailedVATLedger.Quantity);
+                    taxinvoicedetail.unitCost := Format(detailedVATLedger."Unit price");
+                    taxinvoicedetail.supplyCost := Format(detailedVATLedger."Actual Amount");
+                    taxinvoicedetail.tax := Format(detailedVATLedger."Tax Amount");
+                    taxinvoicedetail.remark := detailedVATLedger.Remark;
+                    ListofTax.Add(taxinvoicedetail); //Detail List 집어넣기.
+                until detailedVATLedger.Next() = 0;
+            end;
             taxinvoice.detailList := ListofTax; //SET List<TaxinvoiceDetial>...            
         end;
 
@@ -804,6 +823,7 @@ codeunit 50102 VATPopbillFunctions
         SerialNum: Integer;   
         window: Dialog;
         windowMessage: Text;          
+        detailCount: Integer;
     begin
         ClearAll();
         //2H Consulting - Security Key & Linkid (변경할 일 없음.)
@@ -971,22 +991,40 @@ codeunit 50102 VATPopbillFunctions
         detailedVATLedger.SetRange("VAT Document No.", VATLedger."VAT Document No.");
         SerialNum := 0;
         if detailedVATLedger.FindSet() then begin
-            ListofStatement := statement.GetStatementDetails(); //List<StatementDetail> 을 가져오는 구문.            
-            repeat
-                SerialNum += 1;
+            ListofStatement := statement.GetStatementDetails(); //List<StatementDetail> 을 가져오는 구문.       
+            //명세서 축약인 경우, 목록이 1개 이상이면,
+            detailCount := detailedVATLedger.Count;
+            if (VATCompanyInformation."Statements Abbreviates" = true) AND
+            (detailCount > 1) then
+            begin
                 statementdetail := statementdetail.StatementDetail();
-                statementdetail.serialNum := SerialNum;
+                statementdetail.serialNum := 1;
                 statementdetail.purchaseDT := Format(VATLedger."VAT Date", 0, '<Year4><Month,2><Day,2>');
-                statementdetail.itemName := detailedVATLedger."Item Description";
+                statementdetail.itemName := detailedVATLedger."Item Description"+' 외 '+Format(detailCount)+'건';;
                 statementdetail.spec := detailedVATLedger.Spec;
-                statementdetail.qty := Format(detailedVATLedger.Quantity);
-                statementdetail.unitCost := Format(detailedVATLedger."Unit price");
-                statementdetail.supplyCost := Format(detailedVATLedger."Actual Amount");
-                statementdetail.tax := Format(detailedVATLedger."Tax Amount");
-                statementdetail.remark := detailedVATLedger.Remark;
+                statementdetail.qty := '1';
+                statementdetail.unitCost := '0';
+                statementdetail.supplyCost := Format(VATLedger."Actual Amount");
+                statementdetail.tax := Format(VATLedger."Tax Amount");
                 statementdetail.spare1 := ''; //1~10까지 있음.
-                ListofStatement.Add(statementdetail); //Detail List 집어넣기.
-            until detailedVATLedger.Next() = 0;
+                ListofStatement.Add(statementdetail); //Detail List 집어넣기.                
+            end else begin
+                repeat
+                    SerialNum += 1;
+                    statementdetail := statementdetail.StatementDetail();
+                    statementdetail.serialNum := SerialNum;
+                    statementdetail.purchaseDT := Format(VATLedger."VAT Date", 0, '<Year4><Month,2><Day,2>');
+                    statementdetail.itemName := detailedVATLedger."Item Description";
+                    statementdetail.spec := detailedVATLedger.Spec;
+                    statementdetail.qty := Format(detailedVATLedger.Quantity);
+                    statementdetail.unitCost := Format(detailedVATLedger."Unit price");
+                    statementdetail.supplyCost := Format(detailedVATLedger."Actual Amount");
+                    statementdetail.tax := Format(detailedVATLedger."Tax Amount");
+                    statementdetail.remark := detailedVATLedger.Remark;
+                    statementdetail.spare1 := ''; //1~10까지 있음.
+                    ListofStatement.Add(statementdetail); //Detail List 집어넣기.
+                until detailedVATLedger.Next() = 0;
+            end;                 
             statement.detailList := ListofStatement; //SET List<StatementDetail>...            
         end;    
 /*// 추가속성항목, 자세한사항은 "전자명세서 API 연동매뉴얼> 5.2 기본양식 추가속성 테이블" 참조.

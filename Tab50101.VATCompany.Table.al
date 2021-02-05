@@ -91,12 +91,17 @@ table 50101 "VAT Company"
             DataClassification = CustomerContent;
         }
 #region 계산서발행관련 설정-현재는 사용안함.        
-        field(17; Abbreviates; Boolean)
+        field(17; "Invoice Abbreviates"; Boolean)
         {
-            CaptionML = ENU='Abbreviates',KOR='계산서/명세서 항목 축약 발행여부';
+            CaptionML = ENU='Invoice Abbreviates',KOR='계산서 항목 축약 발행';
             DataClassification = CustomerContent;
         }
-        field(18; "Include Comments"; Boolean)
+        field(18;"Statements Abbreviates"; Boolean)
+        {
+            CaptionML = ENU='Statement Abbreviates',KOR='명세서 항목 축약 발행';
+            DataClassification = CustomerContent;
+        }
+        field(19; "Include Comments"; Boolean)
         {
             CaptionML = ENU='Include Comments',KOR='계산서/명세서 주석포함 발행여부';
             DataClassification = CustomerContent;

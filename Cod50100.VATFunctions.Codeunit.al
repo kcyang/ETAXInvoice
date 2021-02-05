@@ -67,13 +67,13 @@ codeunit 50100 "VAT Functions"
                   begin
                     SalesInvoice.Reset();
                     if SalesInvoice.get(SalesInvHdrNo) then
-                      CreateSalesVATLedgerEntreis(SalesHeader."Document Type",SalesInvoice,SalesCrMemo,VATInformation);
+                      CreateSalesVATLedgerEntries(SalesHeader."Document Type",SalesInvoice,SalesCrMemo,VATInformation);
                   end;
                 SalesHeader."Document Type"::"Credit Memo",SalesHeader."Document Type"::"Return Order":
                   begin
                     SalesCrMemo.Reset();
                     if SalesCrMemo.get(SalesCrMemoHdrNo) then
-                      CreateSalesVATLedgerEntreis(SalesHeader."Document Type",SalesInvoice,SalesCrMemo,VATInformation);
+                      CreateSalesVATLedgerEntries(SalesHeader."Document Type",SalesInvoice,SalesCrMemo,VATInformation);
                   end;
                 else;
               end; //CASE End;
@@ -105,13 +105,13 @@ codeunit 50100 "VAT Functions"
                   begin
                     PurchInvoice.Reset();
                     if PurchInvoice.get(PurchInvHdrNo) then
-                      CreatePurchVATLedgerEntreis(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
+                      CreatePurchVATLedgerEntries(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
                   end;
                 PurchaseHeader."Document Type"::"Credit Memo",PurchaseHeader."Document Type"::"Return Order":
                   begin
                     PurchCrMemo.Reset();
                     if PurchCrMemo.get(PurchCrMemoHdrNo) then
-                      CreatePurchVATLedgerEntreis(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
+                      CreatePurchVATLedgerEntries(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
                   end;
                 else;
               end; //CASE End;
@@ -128,22 +128,25 @@ codeunit 50100 "VAT Functions"
     /// <param name="SalesHeader">Sales Order, Sales Invoice 인 경우, 이 레코드 값을 취합니다.</param>
     /// <param name="SalesCrMemo">Sales Credit Memo, Sales Return Order 인 경우, 이 레코드 값을 취합니다.</param>
     /// <param name="VATInformation">부가세 관련정보가 있는 마스터항목입니다.</param>
-    local procedure CreateSalesVATLedgerEntreis(SalesDocumentType: Enum "Sales Document Type";SalesHeader: Record "Sales Invoice Header";SalesCrMemo: Record "Sales Cr.Memo Header";VATInformation: Record "VAT Basic Information")
+    local procedure CreateSalesVATLedgerEntries(SalesDocumentType: Enum "Sales Document Type";SalesHeader: Record "Sales Invoice Header";SalesCrMemo: Record "Sales Cr.Memo Header";VATInformation: Record "VAT Basic Information")
     var
-      VATLedgerEntreis : Record "VAT Ledger Entries";
-      detailedVATLedgerEntreis : Record "detailed VAT Ledger Entries";
+      VATLedgerEntries : Record "VAT Ledger Entries";
+      detailedVATLedgerEntries : Record "detailed VAT Ledger Entries";
       SalesLines: Record "Sales Invoice Line";
       SalesCrLines: Record "Sales Cr.Memo Line";
       SalesLineCnt: Integer;
       SalesLineDescription: Text[300];
+      LineNo: Integer;
     begin
       Clear(SalesLineCnt);
       Clear(SalesLineDescription);
+      Clear(LineNo);
 
       CASE SalesDocumentType of
         SalesDocumentType::Order,SalesDocumentType::Invoice:
         begin
 #region - 라인축약을 위한 구분.          
+/*
           //... 외 ..건 Description 을 위해 Sales Line 뒤지기.
           SalesLines.Reset();
           SalesLines.SetRange("Document No.",SalesHeader."No.");
@@ -157,38 +160,47 @@ codeunit 50100 "VAT Functions"
           until SalesLines.Next() = 0; 
           end;
           SalesLineDescription += StrSubstNo('외 %1건',SalesLineCnt);          
+*/          
 #endregion
-          VATLedgerEntreis.Init();
-          VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
-          VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Sales); //매출/청구
-          VATLedgerEntreis.Validate("Account No.",SalesHeader."Bill-to Customer No."); //청구처 입력.
-          VATLedgerEntreis."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
+          VATLedgerEntries.Init();
+          VATLedgerEntries.Insert(true); //VAT No. / VAT Company Information 입력.      
+          VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Sales); //매출/청구
+          VATLedgerEntries.Validate("Account No.",SalesHeader."Bill-to Customer No."); //청구처 입력.
+          VATLedgerEntries."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
           if SalesDocumentType = SalesDocumentType::Order then
-            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::Order
+            VATLedgerEntries."Linked Document Type" := VATLedgerEntries."Linked Document Type"::Order
           else
-            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::Invoice;
-          VATLedgerEntreis."Linked Document No." := SalesHeader."No.";
-          VATLedgerEntreis."Linked External Document No." := SalesHeader."External Document No.";
-          VATLedgerEntreis.Modify();
+            VATLedgerEntries."Linked Document Type" := VATLedgerEntries."Linked Document Type"::Invoice;
+          VATLedgerEntries."Linked Document No." := SalesHeader."No.";
+          VATLedgerEntries."Linked External Document No." := SalesHeader."External Document No.";
+          VATLedgerEntries.Modify();
 
-          SalesHeader.CalcFields(Amount,"Amount Including VAT");
-#region - 디테일라인 입력구간
-          detailedVATLedgerEntreis.Init();
-          detailedVATLedgerEntreis."VAT Document Date" := SalesHeader."Posting Date";
-          detailedVATLedgerEntreis."VAT Document No." := VATLedgerEntreis."VAT Document No.";
-          detailedVATLedgerEntreis."Line No." := 10000;
-          detailedVATLedgerEntreis."Actual Amount" := SalesHeader.Amount;
-          //Actual 은 부가세 카테코리의 금액을 업데이트하므로, Validate 는 Tax 에 넣어서 진행한다.
-          detailedVATLedgerEntreis."Tax Amount" := SalesHeader."Amount Including VAT" - SalesHeader.Amount;
-          detailedVATLedgerEntreis."Line Total Amount" := detailedVATLedgerEntreis."Actual Amount"+detailedVATLedgerEntreis."Tax Amount";
-          detailedVATLedgerEntreis.Quantity := 1;
-          detailedVATLedgerEntreis."Item Description" := SalesLineDescription;
-          detailedVATLedgerEntreis.Insert(true);          
-#endregion
+          //Line 항목 넣기.
+          SalesLines.Reset();
+          SalesLines.SetRange("Document No.",SalesHeader."No.");
+          if SalesLines.FindSet() then
+          begin
+            LineNo := 0;
+            repeat
+              LineNo += 10000;
+              detailedVATLedgerEntries.Init();
+              detailedVATLedgerEntries."VAT Document Date" := SalesHeader."Posting Date";
+              detailedVATLedgerEntries."VAT Document No." := VATLedgerEntries."VAT Document No.";
+              detailedVATLedgerEntries."Line No." := LineNo;
+              detailedVATLedgerEntries.Quantity := SalesLines.Quantity;
+              detailedVATLedgerEntries."Unit price" := SalesLines."Unit Price";                                
+              detailedVATLedgerEntries."Actual Amount" := SalesLines.Amount;
+              detailedVATLedgerEntries."Tax Amount" := SalesLines."Amount Including VAT" - SalesLines.Amount;
+              detailedVATLedgerEntries."Line Total Amount" := detailedVATLedgerEntries."Actual Amount"+detailedVATLedgerEntries."Tax Amount";
+              detailedVATLedgerEntries."Item Description" := SalesLines.Description+' '+SalesLines."Description 2";
+              detailedVATLedgerEntries.Insert(true);                
+            until SalesLines.Next() = 0;
+          end;
         end;
         SalesDocumentType::"Credit Memo",SalesDocumentType::"Return Order":
         begin
-#region - 라인축약을 위한 구분.          
+#region - 라인축약을 위한 구분.     
+/*     
           //... 외 ..건 Description 을 위해 Sales Line 뒤지기.
           SalesCrLines.Reset();
           SalesCrLines.SetRange("Document No.",SalesCrMemo."No.");
@@ -202,39 +214,46 @@ codeunit 50100 "VAT Functions"
           until SalesCrLines.Next() = 0; 
           end;
           SalesLineDescription += StrSubstNo('외 %1건',SalesLineCnt);
+*/          
 #endregion
-          VATLedgerEntreis.Init();
-          VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
-          VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Sales); //매출/청구
-          VATLedgerEntreis.Validate("Account No.",SalesCrMemo."Bill-to Customer No."); //청구처 입력.
-          VATLedgerEntreis."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
+          VATLedgerEntries.Init();
+          VATLedgerEntries.Insert(true); //VAT No. / VAT Company Information 입력.      
+          VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Sales); //매출/청구
+          VATLedgerEntries.Validate("Account No.",SalesCrMemo."Bill-to Customer No."); //청구처 입력.
+          VATLedgerEntries."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
           if SalesDocumentType = SalesDocumentType::"Credit Memo" then
-            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::"Credit Memo"
+            VATLedgerEntries."Linked Document Type" := VATLedgerEntries."Linked Document Type"::"Credit Memo"
           else
-            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::"Return Order";
-          VATLedgerEntreis."Linked Document No." := SalesCrMemo."No.";
-          VATLedgerEntreis."Linked External Document No." := SalesCrMemo."External Document No.";
-          VATLedgerEntreis.Modify();
+            VATLedgerEntries."Linked Document Type" := VATLedgerEntries."Linked Document Type"::"Return Order";
+          VATLedgerEntries."Linked Document No." := SalesCrMemo."No.";
+          VATLedgerEntries."Linked External Document No." := SalesCrMemo."External Document No.";
+          VATLedgerEntries.Modify();
 
-          SalesCrMemo.CalcFields(Amount,"Amount Including VAT");
-#region - 디테일라인 입력구간
-          detailedVATLedgerEntreis.Init();
-          detailedVATLedgerEntreis."VAT Document Date" := SalesCrMemo."Posting Date";
-          detailedVATLedgerEntreis."VAT Document No." := VATLedgerEntreis."VAT Document No.";
-          detailedVATLedgerEntreis."Line No." := 10000;
-          detailedVATLedgerEntreis."Actual Amount" := -SalesCrMemo.Amount;
-          //Actual 은 부가세 카테코리의 금액을 업데이트하므로, Validate 는 Tax 에 넣어서 진행한다.
-          detailedVATLedgerEntreis."Tax Amount" := -(SalesCrMemo."Amount Including VAT" - SalesCrMemo.Amount);
-          detailedVATLedgerEntreis."Line Total Amount" := -(SalesCrMemo."Amount Including VAT");
-          detailedVATLedgerEntreis.Quantity := 1;
-          detailedVATLedgerEntreis."Item Description" := SalesLineDescription;
-          detailedVATLedgerEntreis.Insert(true);               
-#endregion          
+          SalesCrLines.Reset();
+          SalesCrLines.SetRange("Document No.",SalesCrMemo."No.");
+          if SalesCrLines.FindSet() then
+          begin
+            LineNo := 0;
+            repeat
+              LineNo += 10000;
+              detailedVATLedgerEntries.Init();
+              detailedVATLedgerEntries."VAT Document Date" := SalesCrMemo."Posting Date";
+              detailedVATLedgerEntries."VAT Document No." := VATLedgerEntries."VAT Document No.";
+              detailedVATLedgerEntries."Line No." := LineNo;
+              detailedVATLedgerEntries.Quantity := SalesCrLines.Quantity;
+              detailedVATLedgerEntries."Unit price" := SalesCrLines."Unit Price";                                
+              detailedVATLedgerEntries."Actual Amount" := -SalesCrLines.Amount;
+              detailedVATLedgerEntries."Tax Amount" := -(SalesCrLines."Amount Including VAT" - SalesCrLines.Amount);
+              detailedVATLedgerEntries."Line Total Amount" := detailedVATLedgerEntries."Actual Amount"+detailedVATLedgerEntries."Tax Amount";
+              detailedVATLedgerEntries."Item Description" := SalesCrLines.Description+' '+SalesCrLines."Description 2";
+              detailedVATLedgerEntries.Insert(true);                
+            until SalesCrLines.Next() = 0;
+          end;          
         end; 
         else;
       END;
 
-      Page.Run(Page::"VAT Sales Document",VATLedgerEntreis);
+      Page.Run(Page::"VAT Sales Document",VATLedgerEntries);
 
     end;
 
@@ -245,21 +264,25 @@ codeunit 50100 "VAT Functions"
     /// <param name="PurchHeader">Pruchase Order, Pruchase Invoice 인 경우, 이 레코드 값을 취합니다.</param>
     /// <param name="PurchCrMemo">Pruchase Credit Memo, Pruchase Return Order 인 경우, 이 레코드 값을 취합니다.</param>
     /// <param name="VATInformation">부가세 관련정보가 있는 마스터항목입니다.</param>
-    local procedure CreatePurchVATLedgerEntreis(PurchDocumentType: Enum "Purchase Document Type";PurchHeader: Record "Purch. Inv. Header";PurchCrMemo: Record "Purch. Cr. Memo Hdr.";VATInformation: Record "VAT Basic Information")
+    local procedure CreatePurchVATLedgerEntries(PurchDocumentType: Enum "Purchase Document Type";PurchHeader: Record "Purch. Inv. Header";PurchCrMemo: Record "Purch. Cr. Memo Hdr.";VATInformation: Record "VAT Basic Information")
     var
-      VATLedgerEntreis : Record "VAT Ledger Entries";
-      detailedVATLedgerEntreis : Record "detailed VAT Ledger Entries";
+      VATLedgerEntries : Record "VAT Ledger Entries";
+      detailedVATLedgerEntries : Record "detailed VAT Ledger Entries";
       PurchLines: Record "Purch. Inv. Line";
       PurchCrLines: Record "Purch. Cr. Memo Line";
       PurchLineCnt: Integer;
       PurchLineDescription: Text[300];
+      LineNo: Integer;
     begin
       Clear(PurchLineCnt);
       Clear(PurchLineDescription);
+      Clear(LineNo);
 
       CASE PurchDocumentType of
         PurchDocumentType::Order,PurchDocumentType::Invoice:
         begin
+#region Purch - 입력구간          
+/*
           ///... 외 ..건 Description 을 위해 Sales Line 뒤지기.
           PurchLines.Reset();
           PurchLines.SetRange("Document No.",PurchHeader."No.");
@@ -273,34 +296,45 @@ codeunit 50100 "VAT Functions"
           until PurchLines.Next() = 0; 
           end;
           PurchLineDescription += StrSubstNo('외 %1건',PurchLineCnt);          
-          VATLedgerEntreis.Init();
-          VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
-          VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Purchase); //매출/청구
-          VATLedgerEntreis.Validate("Account No.",PurchHeader."Pay-to Vendor No."); //매입처 입력.
-          VATLedgerEntreis."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
+*/          
+#endregion          
+          VATLedgerEntries.Init();
+          VATLedgerEntries.Insert(true); //VAT No. / VAT Company Information 입력.      
+          VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Purchase); //매출/청구
+          VATLedgerEntries.Validate("Account No.",PurchHeader."Pay-to Vendor No."); //매입처 입력.
+          VATLedgerEntries."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
           if PurchDocumentType = PurchDocumentType::Order then
-            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::Order
+            VATLedgerEntries."Linked Document Type" := VATLedgerEntries."Linked Document Type"::Order
           else
-            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::Invoice;
-          VATLedgerEntreis."Linked Document No." := PurchHeader."No.";
-          VATLedgerEntreis."Linked External Document No." := PurchHeader."Vendor Invoice No.";
-          VATLedgerEntreis.Modify();
+            VATLedgerEntries."Linked Document Type" := VATLedgerEntries."Linked Document Type"::Invoice;
+          VATLedgerEntries."Linked Document No." := PurchHeader."No.";
+          VATLedgerEntries."Linked External Document No." := PurchHeader."Vendor Invoice No.";
+          VATLedgerEntries.Modify();
 
-          PurchHeader.CalcFields(Amount,"Amount Including VAT");
-          detailedVATLedgerEntreis.Init();
-          detailedVATLedgerEntreis."VAT Document Date" := PurchHeader."Posting Date";
-          detailedVATLedgerEntreis."VAT Document No." := VATLedgerEntreis."VAT Document No.";
-          detailedVATLedgerEntreis."Line No." := 10000;
-          detailedVATLedgerEntreis."Actual Amount" := PurchHeader.Amount;
-          //Actual 은 부가세 카테코리의 금액을 업데이트하므로, Validate 는 Tax 에 넣어서 진행한다.
-          detailedVATLedgerEntreis."Tax Amount" := PurchHeader."Amount Including VAT" - PurchHeader.Amount;
-          detailedVATLedgerEntreis."Line Total Amount" := detailedVATLedgerEntreis."Actual Amount"+detailedVATLedgerEntreis."Tax Amount";
-          detailedVATLedgerEntreis.Quantity := 1;
-          detailedVATLedgerEntreis."Item Description" := PurchLineDescription;
-          detailedVATLedgerEntreis.Insert(true);          
+          PurchLines.Reset();
+          PurchLines.SetRange("Document No.",PurchHeader."No.");
+          if PurchLines.FindSet() then 
+          begin
+            LineNo := 0;
+            repeat
+              LineNo += 10000;
+              detailedVATLedgerEntries.Init();
+              detailedVATLedgerEntries."VAT Document Date" := PurchHeader."Posting Date";
+              detailedVATLedgerEntries."VAT Document No." := VATLedgerEntries."VAT Document No.";
+              detailedVATLedgerEntries."Line No." := LineNo;
+              detailedVATLedgerEntries.Quantity := PurchLines.Quantity;
+              detailedVATLedgerEntries."Unit price" := PurchLines."Unit Cost (LCY)";                                
+              detailedVATLedgerEntries."Actual Amount" := PurchLines.Amount;
+              detailedVATLedgerEntries."Tax Amount" := PurchLines."Amount Including VAT" - PurchLines.Amount;
+              detailedVATLedgerEntries."Line Total Amount" := detailedVATLedgerEntries."Actual Amount"+detailedVATLedgerEntries."Tax Amount";
+              detailedVATLedgerEntries."Item Description" := PurchLines.Description+' '+PurchLines."Description 2";
+              detailedVATLedgerEntries.Insert(true);     
+            until PurchLines.Next() = 0;
+          end;
         end;
         PurchDocumentType::"Credit Memo",PurchDocumentType::"Return Order":
         begin
+/*          
           ///... 외 ..건 Description 을 위해 Sales Line 뒤지기.
           PurchCrLines.Reset();
           PurchCrLines.SetRange("Document No.",PurchCrMemo."No.");
@@ -314,36 +348,45 @@ codeunit 50100 "VAT Functions"
           until PurchCrLines.Next() = 0; 
           end;
           PurchLineDescription += StrSubstNo('외 %1건',PurchLineCnt);
-          VATLedgerEntreis.Init();
-          VATLedgerEntreis.Insert(true); //VAT No. / VAT Company Information 입력.      
-          VATLedgerEntreis.Validate("VAT Issue Type",VATLedgerEntreis."VAT Issue Type"::Purchase); //매출/청구
-          VATLedgerEntreis.Validate("Account No.",PurchCrMemo."Pay-to Vendor No."); //청구처 입력.
-          VATLedgerEntreis."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
+*/          
+          VATLedgerEntries.Init();
+          VATLedgerEntries.Insert(true); //VAT No. / VAT Company Information 입력.      
+          VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Purchase); //매출/청구
+          VATLedgerEntries.Validate("Account No.",PurchCrMemo."Pay-to Vendor No."); //청구처 입력.
+          VATLedgerEntries."VAT Category Code" :='V01'; ///FIXME 설정으로 처리할 방법은 없는가? 
           if PurchDocumentType = PurchDocumentType::"Credit Memo" then
-            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::"Credit Memo"
+            VATLedgerEntries."Linked Document Type" := VATLedgerEntries."Linked Document Type"::"Credit Memo"
           else
-            VATLedgerEntreis."Linked Document Type" := VATLedgerEntreis."Linked Document Type"::"Return Order";
-          VATLedgerEntreis."Linked Document No." := PurchCrMemo."No.";
-          VATLedgerEntreis."Linked External Document No." := PurchCrMemo."Vendor Cr. Memo No.";
-          VATLedgerEntreis.Modify();
+            VATLedgerEntries."Linked Document Type" := VATLedgerEntries."Linked Document Type"::"Return Order";
+          VATLedgerEntries."Linked Document No." := PurchCrMemo."No.";
+          VATLedgerEntries."Linked External Document No." := PurchCrMemo."Vendor Cr. Memo No.";
+          VATLedgerEntries.Modify();
 
-          PurchCrMemo.CalcFields(Amount,"Amount Including VAT");
-          detailedVATLedgerEntreis.Init();
-          detailedVATLedgerEntreis."VAT Document Date" := PurchCrMemo."Posting Date";
-          detailedVATLedgerEntreis."VAT Document No." := VATLedgerEntreis."VAT Document No.";
-          detailedVATLedgerEntreis."Line No." := 10000;
-          detailedVATLedgerEntreis."Actual Amount" := -PurchCrMemo.Amount;
-          //Actual 은 부가세 카테코리의 금액을 업데이트하므로, Validate 는 Tax 에 넣어서 진행한다.
-          detailedVATLedgerEntreis."Tax Amount" := -(PurchCrMemo."Amount Including VAT" - PurchCrMemo.Amount);
-          detailedVATLedgerEntreis."Line Total Amount" := -(PurchCrMemo."Amount Including VAT");
-          detailedVATLedgerEntreis.Quantity := 1;
-          detailedVATLedgerEntreis."Item Description" := PurchLineDescription;
-          detailedVATLedgerEntreis.Insert(true);               
+          PurchCrLines.Reset();
+          PurchCrLines.SetRange("Document No.",PurchCrMemo."No.");
+          if PurchCrLines.FindSet() then 
+          begin
+            LineNo := 0;
+            repeat
+              LineNo += 10000;
+              detailedVATLedgerEntries.Init();
+              detailedVATLedgerEntries."VAT Document Date" := PurchCrMemo."Posting Date";
+              detailedVATLedgerEntries."VAT Document No." := VATLedgerEntries."VAT Document No.";
+              detailedVATLedgerEntries."Line No." := LineNo;
+              detailedVATLedgerEntries.Quantity := PurchCrLines.Quantity;
+              detailedVATLedgerEntries."Unit price" := PurchCrLines."Unit Cost (LCY)";                                
+              detailedVATLedgerEntries."Actual Amount" := -PurchCrLines.Amount;
+              detailedVATLedgerEntries."Tax Amount" := -(PurchCrLines."Amount Including VAT" - PurchCrLines.Amount);
+              detailedVATLedgerEntries."Line Total Amount" := detailedVATLedgerEntries."Actual Amount"+detailedVATLedgerEntries."Tax Amount";
+              detailedVATLedgerEntries."Item Description" := PurchCrLines.Description+' '+PurchCrLines."Description 2";
+              detailedVATLedgerEntries.Insert(true);     
+            until PurchCrLines.Next() = 0;
+          end;
         end; 
         else;
       END;
 
-      Page.Run(Page::"VAT Purchase Document",VATLedgerEntreis);
+      Page.Run(Page::"VAT Purchase Document",VATLedgerEntries);
 
     end;
 }
