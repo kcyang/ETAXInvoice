@@ -99,9 +99,8 @@ page 50100 "VAT Company Information"
                 {
                     ApplicationArea = All;
                 }                
-                field("Include Comments";Rec."Include Comments")
+                field("InvoiceIssued";Rec.InvoiceIssued)
                 {
-                    Visible = false;
                     ApplicationArea = All;                    
                 }
             }         

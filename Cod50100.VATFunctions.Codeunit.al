@@ -52,34 +52,44 @@ codeunit 50100 "VAT Functions"
       VATInformation: Record "VAT Basic Information";   
       SalesInvoice: Record "Sales Invoice Header"; 
       SalesCrMemo: Record "Sales Cr.Memo Header";
+      VATCompany: Record "VAT Company";
     begin
-        VATInformation.Reset();
-        VATInformation.SetRange("Table ID",Database::Customer);
-        //계산서 발행은, 청구처를 기준으로.
-        VATInformation.SetRange("No.",SalesHeader."Bill-to Customer No.");
+      VATCompany.Reset();
+      if VATCompany.Find('-') then
+      begin
+        //송장처리할 때, 처리하도록 함.
+        if ((SalesInvHdrNo <> '') OR (SalesCrMemoHdrNo <> '')) AND VATCompany.InvoiceIssued then 
+        begin
+          VATInformation.Reset();
+          VATInformation.SetRange("Table ID",Database::Customer);
+          //계산서 발행은, 청구처를 기준으로.
+          VATInformation.SetRange("No.",SalesHeader."Bill-to Customer No.");
 
-        //하나만 찾으면 됨.
-        if VATInformation.Find('-') then begin
-          if VATInformation."VAT Type" = VATInformation."VAT Type"::Line then begin
-            if Dialog.Confirm('%1 고객에 대해 계산서 발행을 위한 부가정보를 등록하시겠습니까?',true,SalesHeader."Bill-to Name") then begin
-              case SalesHeader."Document Type" of
-                SalesHeader."Document Type"::Order,SalesHeader."Document Type"::Invoice:
-                  begin
-                    SalesInvoice.Reset();
-                    if SalesInvoice.get(SalesInvHdrNo) then
-                      CreateSalesVATLedgerEntries(SalesHeader."Document Type",SalesInvoice,SalesCrMemo,VATInformation);
-                  end;
-                SalesHeader."Document Type"::"Credit Memo",SalesHeader."Document Type"::"Return Order":
-                  begin
-                    SalesCrMemo.Reset();
-                    if SalesCrMemo.get(SalesCrMemoHdrNo) then
-                      CreateSalesVATLedgerEntries(SalesHeader."Document Type",SalesInvoice,SalesCrMemo,VATInformation);
-                  end;
-                else;
-              end; //CASE End;
-            end; //Dialog Confirm
-          end; //VAT Type::Line
-        end; //VATInformation.Find()      
+          //하나만 찾으면 됨.
+          if VATInformation.Find('-') then begin
+            if VATInformation."VAT Type" = VATInformation."VAT Type"::Line then begin
+              if Dialog.Confirm('%1 고객에 대해 계산서 발행을 위한 부가정보를 등록하시겠습니까?',true,SalesHeader."Bill-to Name") then begin
+                case SalesHeader."Document Type" of
+                  SalesHeader."Document Type"::Order,SalesHeader."Document Type"::Invoice:
+                    begin
+                      SalesInvoice.Reset();
+                      if SalesInvoice.get(SalesInvHdrNo) then
+                        CreateSalesVATLedgerEntries(SalesHeader."Document Type",SalesInvoice,SalesCrMemo,VATInformation);
+                    end;
+                  SalesHeader."Document Type"::"Credit Memo",SalesHeader."Document Type"::"Return Order":
+                    begin
+                      SalesCrMemo.Reset();
+                      if SalesCrMemo.get(SalesCrMemoHdrNo) then
+                        CreateSalesVATLedgerEntries(SalesHeader."Document Type",SalesInvoice,SalesCrMemo,VATInformation);
+                    end;
+                  else;
+                end; //CASE End;
+              end; //Dialog Confirm
+            end; //VAT Type::Line
+          end; //VATInformation.Find()      
+        end;
+      end else 
+        ;
     end; //End Procedure.
 
     //Purchase Order, Purchase Invoice
@@ -90,34 +100,43 @@ codeunit 50100 "VAT Functions"
       VATInformation: Record "VAT Basic Information";   
       PurchInvoice: Record "Purch. Inv. Header"; 
       PurchCrMemo: Record "Purch. Cr. Memo Hdr.";
+      VATCompany: Record "VAT Company";      
     begin
-        VATInformation.Reset();
-        VATInformation.SetRange("Table ID",Database::Vendor);
-        //계산서 발행은, 청구처를 기준으로.
-        VATInformation.SetRange("No.",PurchaseHeader."Pay-to Vendor No.");
+      VATCompany.Reset();
+      if VATCompany.Find('-') then
+      begin      
+        //송장처리할 때에만 동작하도록 함.
+        if ((PurchInvHdrNo <> '') OR (PurchCrMemoHdrNo <> '')) AND VATCompany.InvoiceIssued then 
+        begin
+          VATInformation.Reset();
+          VATInformation.SetRange("Table ID",Database::Vendor);
+          //계산서 발행은, 청구처를 기준으로.
+          VATInformation.SetRange("No.",PurchaseHeader."Pay-to Vendor No.");
 
-        //하나만 찾으면 됨.
-        if VATInformation.Find('-') then begin
-          if VATInformation."VAT Type" = VATInformation."VAT Type"::Line then begin
-            if Dialog.Confirm('%1 고객에 대해 계산서 발행을 위한 부가정보를 등록하시겠습니까?',true,PurchaseHeader."Pay-to Name") then begin
-              case PurchaseHeader."Document Type" of
-                PurchaseHeader."Document Type"::Order,PurchaseHeader."Document Type"::Invoice:
-                  begin
-                    PurchInvoice.Reset();
-                    if PurchInvoice.get(PurchInvHdrNo) then
-                      CreatePurchVATLedgerEntries(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
-                  end;
-                PurchaseHeader."Document Type"::"Credit Memo",PurchaseHeader."Document Type"::"Return Order":
-                  begin
-                    PurchCrMemo.Reset();
-                    if PurchCrMemo.get(PurchCrMemoHdrNo) then
-                      CreatePurchVATLedgerEntries(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
-                  end;
-                else;
-              end; //CASE End;
-            end; //Dialog Confirm
-          end; //VAT Type::Line
-        end; //VATInformation.Find()      
+          //하나만 찾으면 됨.
+          if VATInformation.Find('-') then begin
+            if VATInformation."VAT Type" = VATInformation."VAT Type"::Line then begin
+              if Dialog.Confirm('%1 고객에 대해 계산서 발행을 위한 부가정보를 등록하시겠습니까?',true,PurchaseHeader."Pay-to Name") then begin
+                case PurchaseHeader."Document Type" of
+                  PurchaseHeader."Document Type"::Order,PurchaseHeader."Document Type"::Invoice:
+                    begin
+                      PurchInvoice.Reset();
+                      if PurchInvoice.get(PurchInvHdrNo) then
+                        CreatePurchVATLedgerEntries(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
+                    end;
+                  PurchaseHeader."Document Type"::"Credit Memo",PurchaseHeader."Document Type"::"Return Order":
+                    begin
+                      PurchCrMemo.Reset();
+                      if PurchCrMemo.get(PurchCrMemoHdrNo) then
+                        CreatePurchVATLedgerEntries(PurchaseHeader."Document Type",PurchInvoice,PurchCrMemo,VATInformation);
+                    end;
+                  else;
+                end; //CASE End;
+              end; //Dialog Confirm
+            end; //VAT Type::Line
+          end; //VATInformation.Find()      
+        end;
+      end;
     end; //End Procedure.
     
     
@@ -145,23 +164,6 @@ codeunit 50100 "VAT Functions"
       CASE SalesDocumentType of
         SalesDocumentType::Order,SalesDocumentType::Invoice:
         begin
-#region - 라인축약을 위한 구분.          
-/*
-          //... 외 ..건 Description 을 위해 Sales Line 뒤지기.
-          SalesLines.Reset();
-          SalesLines.SetRange("Document No.",SalesHeader."No.");
-          SalesLines.SetFilter(Type,'%1..%2',SalesLines.Type::"G/L Account",SalesLines.Type::"Fixed Asset");
-
-          if SalesLines.FindSet() then begin
-          repeat
-            SalesLineCnt += 1;
-            if SalesLineCnt = 1 then
-              SalesLineDescription := SalesLines.Description;
-          until SalesLines.Next() = 0; 
-          end;
-          SalesLineDescription += StrSubstNo('외 %1건',SalesLineCnt);          
-*/          
-#endregion
           VATLedgerEntries.Init();
           VATLedgerEntries.Insert(true); //VAT No. / VAT Company Information 입력.      
           VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Sales); //매출/청구
@@ -199,23 +201,6 @@ codeunit 50100 "VAT Functions"
         end;
         SalesDocumentType::"Credit Memo",SalesDocumentType::"Return Order":
         begin
-#region - 라인축약을 위한 구분.     
-/*     
-          //... 외 ..건 Description 을 위해 Sales Line 뒤지기.
-          SalesCrLines.Reset();
-          SalesCrLines.SetRange("Document No.",SalesCrMemo."No.");
-          SalesCrLines.SetFilter(Type,'%1..%2',SalesCrLines.Type::"G/L Account",SalesCrLines.Type::"Fixed Asset");
-
-          if SalesCrLines.FindSet() then begin
-          repeat
-            SalesLineCnt += 1;
-            if SalesLineCnt = 1 then
-              SalesLineDescription := SalesCrLines.Description;
-          until SalesCrLines.Next() = 0; 
-          end;
-          SalesLineDescription += StrSubstNo('외 %1건',SalesLineCnt);
-*/          
-#endregion
           VATLedgerEntries.Init();
           VATLedgerEntries.Insert(true); //VAT No. / VAT Company Information 입력.      
           VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Sales); //매출/청구
@@ -281,23 +266,6 @@ codeunit 50100 "VAT Functions"
       CASE PurchDocumentType of
         PurchDocumentType::Order,PurchDocumentType::Invoice:
         begin
-#region Purch - 입력구간          
-/*
-          ///... 외 ..건 Description 을 위해 Sales Line 뒤지기.
-          PurchLines.Reset();
-          PurchLines.SetRange("Document No.",PurchHeader."No.");
-          PurchLines.SetFilter(Type,'%1..%2',PurchLines.Type::"G/L Account",PurchLines.Type::"Fixed Asset");
-
-          if PurchLines.FindSet() then begin
-          repeat
-            PurchLineCnt += 1;
-            if PurchLineCnt = 1 then
-              PurchLineDescription := PurchLines.Description;
-          until PurchLines.Next() = 0; 
-          end;
-          PurchLineDescription += StrSubstNo('외 %1건',PurchLineCnt);          
-*/          
-#endregion          
           VATLedgerEntries.Init();
           VATLedgerEntries.Insert(true); //VAT No. / VAT Company Information 입력.      
           VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Purchase); //매출/청구
@@ -334,21 +302,6 @@ codeunit 50100 "VAT Functions"
         end;
         PurchDocumentType::"Credit Memo",PurchDocumentType::"Return Order":
         begin
-/*          
-          ///... 외 ..건 Description 을 위해 Sales Line 뒤지기.
-          PurchCrLines.Reset();
-          PurchCrLines.SetRange("Document No.",PurchCrMemo."No.");
-          PurchCrLines.SetFilter(Type,'%1..%2',PurchCrLines.Type::"G/L Account",PurchCrLines.Type::"Fixed Asset");
-
-          if PurchCrLines.FindSet() then begin
-          repeat
-            PurchLineCnt += 1;
-            if PurchLineCnt = 1 then
-              PurchLineDescription := PurchCrLines.Description;
-          until PurchCrLines.Next() = 0; 
-          end;
-          PurchLineDescription += StrSubstNo('외 %1건',PurchLineCnt);
-*/          
           VATLedgerEntries.Init();
           VATLedgerEntries.Insert(true); //VAT No. / VAT Company Information 입력.      
           VATLedgerEntries.Validate("VAT Issue Type",VATLedgerEntries."VAT Issue Type"::Purchase); //매출/청구
@@ -385,7 +338,6 @@ codeunit 50100 "VAT Functions"
         end; 
         else;
       END;
-
       Page.Run(Page::"VAT Purchase Document",VATLedgerEntries);
 
     end;

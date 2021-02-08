@@ -101,9 +101,9 @@ table 50101 "VAT Company"
             CaptionML = ENU='Statement Abbreviates',KOR='명세서 항목 축약 발행';
             DataClassification = CustomerContent;
         }
-        field(19; "Include Comments"; Boolean)
+        field(19; "InvoiceIssued"; Boolean)
         {
-            CaptionML = ENU='Include Comments',KOR='계산서/명세서 주석포함 발행여부';
+            CaptionML = ENU='Issued when Invoicing',KOR='송장처리시 발행';
             DataClassification = CustomerContent;
         }
 #endregion        
