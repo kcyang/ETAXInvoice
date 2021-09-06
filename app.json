@@ -2,7 +2,7 @@
   "id": "74c99cf3-e9c0-4695-bd14-a04ecc492010",
   "name": "ETAXInvoice",
   "publisher": "2H Consulting",
-  "version": "0.9.1.0",
+  "version": "1.0.0.0",
   "brief": "한국 전자세금계산서 발행패키지",
   "description": "이 패키지는 이 시스템에서 전자세금계산서 발행을 바로 진행할 수 있도록 합니다.",
   "privacyStatement": "",

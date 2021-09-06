@@ -9,7 +9,7 @@ codeunit 50101 "VAT Master Functions"
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'No.', false, false)]
     local procedure OnAfterValidateCustomerNo(var Rec: Record Customer; var xRec: Record Customer)
     begin
-        //Message('Customer [%1] Number[%2]-->[%3]', Rec.Name, xRec."No.", Rec."No.");
+        //Message('OnAfterValidateCustomerNo [%1] Number[%2]-->[%3]', Rec.Name, xRec."No.", Rec."No.");
         ModifyCustomerVATBasicInformation(Rec, xRec);
     end;
     /*
@@ -18,31 +18,36 @@ codeunit 50101 "VAT Master Functions"
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterInsertEvent', '', false, false)]
     local procedure OnAfterInsertCustomerNo(var Rec: Record Customer; RunTrigger: Boolean)
     begin
-        //Message('Customer [%2][%1] Inserted',Rec.Name, Rec."No.");
-        InsertCustomerVATBasicInformation(Rec);
+        //Message('OnAfterInsertCustomerNo [%2][%1] Inserted', Rec.Name, Rec."No.");
+        //Microsoft AL Bug - This Trigger has occured when printing orders.
+        //InsertCustomerVATBasicInformation(Rec);
     end;
 
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'Address', false, false)]
     local procedure OnAfterValidateCustomerAddress(var Rec: Record Customer; var xRec: Record Customer)
     begin
+        //Message('OnAfterValidateCustomerAddress [%1] Number[%2]-->[%3]', Rec.Name, xRec."No.", Rec."No.");
         ModifyCustomerFields(Rec, xRec);
     end;
 
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'Address 2', false, false)]
     local procedure OnAfterValidateCustomerAddress2(var Rec: Record Customer; var xRec: Record Customer)
     begin
+        //Message('OnAfterValidateCustomerAddress2 [%1] Number[%2]-->[%3]', Rec.Name, xRec."No.", Rec."No.");
         ModifyCustomerFields(Rec, xRec);
     end;
 
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'Name', false, false)]
     local procedure OnAfterValidateCustomerName(var Rec: Record Customer; var xRec: Record Customer)
     begin
+        //Message('OnAfterValidateCustomerName [%1] Number[%2]-->[%3]', Rec.Name, xRec."No.", Rec."No.");
         ModifyCustomerFields(Rec, xRec);
     end;
 
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'VAT Registration No.', false, false)]
     local procedure OnAfterValidateCustomerRegNo(var Rec: Record Customer; var xRec: Record Customer)
     begin
+        Message('OnAfterValidateCustomerRegNo [%1] Number[%2]-->[%3]', Rec.Name, xRec."No.", Rec."No.");
         ModifyCustomerFields(Rec, xRec);
     end;
     /*
@@ -51,7 +56,6 @@ codeunit 50101 "VAT Master Functions"
     [EventSubscriber(ObjectType::Table, Database::Vendor, 'OnAfterValidateEvent', 'No.', false, false)]
     local procedure OnAfterValidateVendorNo(var Rec: Record Vendor; var xRec: Record Vendor)
     begin
-        //Message('Customer [%1] Number[%2]-->[%3]', Rec.Name, xRec."No.", Rec."No.");
         ModifyVendorVATBasicInformation(Rec, xRec);
     end;
     /*
@@ -61,7 +65,8 @@ codeunit 50101 "VAT Master Functions"
     local procedure OnAfterInsertVendorNo(var Rec: Record Vendor; RunTrigger: Boolean)
     begin
         //Message('Customer [%2][%1] Inserted',Rec.Name, Rec."No.");
-        InsertVendorVATBasicInformation(Rec);
+        //Microsoft AL Bug - This Trigger has occured when printing orders.
+        //InsertVendorVATBasicInformation(Rec);
     end;
 
     [EventSubscriber(ObjectType::Table, Database::Vendor, 'OnAfterValidateEvent', 'Address', false, false)]
@@ -103,11 +108,11 @@ codeunit 50101 "VAT Master Functions"
                 if detailedVAT.FindSet() then begin
                     repeat
                         if Rec."VAT Rates" <> 0 then begin
-                            detailedVAT.Validate("Tax Amount",detailedVAT."Actual Amount" * (Rec."VAT Rates" / 100));
+                            detailedVAT.Validate("Tax Amount", detailedVAT."Actual Amount" * (Rec."VAT Rates" / 100));
                         end else
-                            detailedVAT.Validate("Tax Amount",0);
+                            detailedVAT.Validate("Tax Amount", 0);
 
-                        detailedVAT."Line Total Amount" := detailedVAT."Actual Amount"+detailedVAT."Tax Amount";
+                        detailedVAT."Line Total Amount" := detailedVAT."Actual Amount" + detailedVAT."Tax Amount";
                         detailedVAT.Modify(true);
                     until detailedVAT.Next() = 0;
                 end;
@@ -138,6 +143,7 @@ codeunit 50101 "VAT Master Functions"
             VATBasicInformation."Account Address" := rec.Address + ' ' + rec."Address 2";
             VATBasicInformation."Account Reg. ID" := Rec."VAT Registration No.";
             VATBasicInformation.Insert();
+            Commit(); 
         end;
     end;
     /*
